@@ -1,0 +1,62 @@
+{
+  "goblin": {
+    "char": "g",
+    "color": "green",
+    "ai_type": "aggressive",
+    "xp_value": 15,
+    "weight": 120,
+    "attributes": {
+      "strength": 6,
+      "agility": 12,
+      "constitution": 8,
+      "intelligence": 4,
+      "willpower": 6,
+      "aura": 3
+    }
+  },
+  "orc": {
+    "char": "o",
+    "color": "red",
+    "ai_type": "patrol",
+    "xp_value": 25,
+    "weight": 180,
+    "attributes": {
+      "strength": 10,
+      "agility": 8,
+      "constitution": 12,
+      "intelligence": 6,
+      "willpower": 8,
+      "aura": 7
+    }
+  },
+  "skeleton": {
+    "char": "s",
+    "color": "white",
+    "ai_type": "aggressive",
+    "xp_value": 12,
+    "weight": 80,
+    "attributes": {
+      "strength": 7,
+      "agility": 10,
+      "constitution": 6,
+      "intelligence": 3,
+      "willpower": 12,
+      "aura": 2
+    }
+  },
+  "troll": {
+    "char": "T",
+    "color": "brown",
+    "ai_type": "guard",
+    "xp_value": 50,
+    "weight": 300,
+    "attributes": {
+      "strength": 16,
+      "agility": 6,
+      "constitution": 18,
+      "intelligence": 4,
+      "willpower": 10,
+      "aura": 8
+    }
+  }
+}

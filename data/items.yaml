@@ -1,0 +1,153 @@
+# Item definitions for the ECS Roguelike
+# Each item defines properties that can be spawned in the world
+
+items:
+  # Weapons
+  rusty_sword:
+    name: "Rusty Sword"
+    description: "A worn blade that's seen better days"
+    type: "weapon"
+    slot: "weapon"
+    attack_bonus: 3
+    defense_bonus: 0
+    value: 10
+    char: "/"
+    color: "yellow"
+    weapon_effects:
+      slashing_chance: 0.15
+      slashing_damage: 2
+  
+  iron_sword:
+    name: "Iron Sword"
+    description: "A sturdy iron blade"
+    type: "weapon"
+    slot: "weapon"
+    attack_bonus: 6
+    defense_bonus: 0
+    value: 50
+    char: "/"
+    color: "white"
+    weapon_effects:
+      slashing_chance: 0.20
+      slashing_damage: 3
+  
+  steel_sword:
+    name: "Steel Sword"
+    description: "A well-crafted steel weapon"
+    type: "weapon"
+    slot: "weapon"
+    attack_bonus: 10
+    defense_bonus: 0
+    value: 150
+    char: "/"
+    color: "cyan"
+    weapon_effects:
+      slashing_chance: 0.25
+      slashing_damage: 4
+  
+  war_maul:
+    name: "War Maul"
+    description: "A massive two-handed hammer that can send enemies flying"
+    type: "weapon"
+    slot: "weapon"
+    attack_bonus: 12
+    defense_bonus: 0
+    value: 200
+    char: "T"
+    color: "bright_white"
+    weapon_effects:
+      knockback_chance: 1.0
+      knockback_force: 25.0
+  
+  # Armor
+  leather_armor:
+    name: "Leather Armor"
+    description: "Basic protection from harm"
+    type: "armor"
+    slot: "armor"
+    attack_bonus: 0
+    defense_bonus: 2
+    value: 25
+    char: "["
+    color: "yellow"
+  
+  chain_mail:
+    name: "Chain Mail"
+    description: "Interlocked metal rings provide good protection"
+    type: "armor"
+    slot: "armor"
+    attack_bonus: 0
+    defense_bonus: 4
+    value: 75
+    char: "["
+    color: "white"
+  
+  plate_armor:
+    name: "Plate Armor"
+    description: "Heavy metal plates offer excellent protection"
+    type: "armor"
+    slot: "armor"
+    attack_bonus: 0
+    defense_bonus: 7
+    value: 200
+    char: "["
+    color: "cyan"
+  
+  # Accessories
+  ring_of_strength:
+    name: "Ring of Strength"
+    description: "A magical ring that enhances physical power"
+    type: "accessory"
+    slot: "accessory"
+    attack_bonus: 0
+    defense_bonus: 0
+    attribute_bonuses:
+      strength: 3
+    value: 100
+    char: "="
+    color: "yellow"
+  
+  amulet_of_constitution:
+    name: "Amulet of Constitution"
+    description: "A protective charm that bolsters health"
+    type: "accessory"
+    slot: "accessory"
+    attack_bonus: 0
+    defense_bonus: 0
+    attribute_bonuses:
+      constitution: 3
+    value: 100
+    char: "\""
+    color: "green"
+  
+  # Consumables
+  health_potion:
+    name: "Health Potion"
+    description: "A red liquid that restores health"
+    type: "consumable"
+    effect_type: "heal"
+    effect_value: 25
+    uses: 1
+    value: 20
+    char: "!"
+    color: "red"
+  
+  greater_health_potion:
+    name: "Greater Health Potion"
+    description: "A potent healing elixir"
+    type: "consumable"
+    effect_type: "heal"
+    effect_value: 50
+    uses: 1
+    value: 50
+    char: "!"
+    color: "bright_red"
+  
+  # Misc items
+  gold_coin:
+    name: "Gold Coin"
+    description: "A shiny gold coin"
+    type: "misc"
+    value: 1
+    char: "$"
+    color: "yellow"

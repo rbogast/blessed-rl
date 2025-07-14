@@ -1,0 +1,28 @@
+{
+  "terrain": {
+    "floor": {
+      "char": "·",
+      "visible_color": "white",
+      "explored_color": "bright_black"
+    },
+    "wall": {
+      "char": "▓",
+      "visible_color": "white",
+      "explored_color": "bright_black"
+    }
+  },
+  "entities": {
+    "player": {
+      "char": "@",
+      "color": "yellow"
+    },
+    "wall_entity": {
+      "char": "▓",
+      "color": "white"
+    },
+    "stone_wall_entity": {
+      "char": "#",
+      "color": "white"
+    }
+  }
+}

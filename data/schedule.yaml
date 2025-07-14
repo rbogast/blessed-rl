@@ -1,0 +1,40 @@
+# World progression schedule for the ECS Roguelike Engine
+# This file defines biome segments and their parameters
+
+- from: 0
+  to: 99
+  biome: forest
+  overrides:
+    wall_probability: 0.3
+    enemy_density: 0.3
+    ca_iterations: 2
+
+- from: 100
+  to: 199
+  biome: forest
+  overrides:
+    wall_probability: 0.42
+    enemy_density: 0.4
+
+- from: 200
+  to: 299
+  biome: graveyard
+  overrides:
+    wall_probability: 0.45
+    enemy_density: 0.6
+    ca_iterations: 4
+
+- from: 300
+  to: 399
+  biome: graveyard
+  overrides:
+    wall_probability: 0.45
+    enemy_density: 0.6
+
+- from: 400
+  to: 499
+  biome: dungeon
+  overrides:
+    wall_probability: 0.6
+    enemy_density: 0.8
+    ca_iterations: 5
