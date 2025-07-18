@@ -27,6 +27,10 @@ class TextFormatter:
             return self.term.magenta + text + self.term.normal
         elif color == 'black_on_magenta':
             return self.term.black_on_magenta + text + self.term.normal
+        elif color == 'blue':
+            return self.term.blue + text + self.term.normal
+        elif color == 'black':
+            return self.term.black + text + self.term.normal
         elif color == 'dark_red':
             return self.term.color(88) + text + self.term.normal  # Dark red color
         else:

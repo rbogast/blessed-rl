@@ -13,7 +13,6 @@ from components.effects import Physics
 from components.ai import AI, AIType
 from components.corpse import Race
 from game.character_stats import calculate_max_hp
-from game.glyph_config import GlyphConfig
 
 
 @dataclass
@@ -125,7 +124,6 @@ class WorldGenerator:
         self.config = config or WorldConfig()
         self.scheduler = scheduler
         self.chunks: Dict[int, Chunk] = {}
-        self.glyph_config = GlyphConfig()
         
         # Set up master seed
         if self.config.seed is None:
@@ -163,9 +161,8 @@ class WorldGenerator:
         # Generate using biome
         biome.generate(chunk.tiles, ctx)
         
-        # Extract core tiles and create entities
+        # Extract core tiles (no longer creating wall entities)
         core_tiles = chunk.get_core_tiles()
-        self._create_entities_from_tiles(chunk, core_tiles)
         
         # Spawn creatures using scheduler
         if self.scheduler:
@@ -174,22 +171,6 @@ class WorldGenerator:
         self.chunks[chunk_id] = chunk
         return chunk
     
-    def _create_entities_from_tiles(self, chunk: Chunk, tiles: List[List[Tile]]) -> None:
-        """Create wall entities from tile data."""
-        wall_char, wall_color = self.glyph_config.get_entity_glyph('wall_entity')
-        
-        for y, row in enumerate(tiles):
-            for x, tile in enumerate(row):
-                if tile.is_wall:
-                    global_x = chunk.chunk_id * self.config.chunk_width + x
-                    entity_id = self.world.create_entity()
-                    
-                    self.world.add_component(entity_id, Position(global_x, y))
-                    self.world.add_component(entity_id, Renderable(wall_char, wall_color))
-                    self.world.add_component(entity_id, Blocking())
-                    self.world.add_component(entity_id, Visible())
-                    
-                    chunk.entities.append(entity_id)
     
     def _spawn_creatures(self, chunk: Chunk, ctx: GenContext) -> None:
         """Spawn creatures using scheduler."""

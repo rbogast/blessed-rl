@@ -45,10 +45,6 @@ class GlyphConfig:
                 "player": {
                     "char": "@",
                     "color": "yellow"
-                },
-                "wall_entity": {
-                    "char": "#",
-                    "color": "white"
                 }
             }
         }
@@ -84,7 +80,7 @@ class GlyphConfig:
         Get entity glyph and color.
         
         Args:
-            entity_type: Type of entity ('player', 'wall_entity', etc.)
+            entity_type: Type of entity ('player', etc.)
             
         Returns:
             Tuple of (character, color)

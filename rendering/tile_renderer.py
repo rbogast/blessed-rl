@@ -71,8 +71,8 @@ class TileRenderer:
             if tile.visible:
                 return entity_char, entity_color
             else:
-                # Entity is out of FOV - show same character but in gray
-                return entity_char, 'bright_black'
+                # Entity is out of FOV - show same character in explored color
+                return entity_char, GameConfig.EXPLORED_TILE_COLOR
         else:
             # No entity - render terrain
             # Get the normal terrain glyph and color
@@ -103,8 +103,8 @@ class TileRenderer:
             if tile.visible:
                 return entity_char, entity_color
             else:
-                # Entity is out of FOV - show same character but in gray
-                return entity_char, 'bright_black'
+                # Entity is out of FOV - show same character in explored color
+                return entity_char, GameConfig.EXPLORED_TILE_COLOR
         else:
             # No entity - render terrain
             # Get the normal terrain glyph and color

@@ -3,26 +3,18 @@
     "floor": {
       "char": "·",
       "visible_color": "white",
-      "explored_color": "bright_black"
+      "explored_color": "blue"
     },
     "wall": {
       "char": "▓",
       "visible_color": "white",
-      "explored_color": "bright_black"
+      "explored_color": "blue"
     }
   },
   "entities": {
     "player": {
-      "char": "@",
+      "char": "@", 
       "color": "yellow"
-    },
-    "wall_entity": {
-      "char": "▓",
-      "color": "white"
-    },
-    "stone_wall_entity": {
-      "char": "#",
-      "color": "white"
     }
   }
 }

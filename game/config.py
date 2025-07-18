@@ -41,7 +41,10 @@ class GameConfig:
     LEGACY_HALO_SIZE = 5  # For compatibility layer
     
     # Field of View
-    PLAYER_SIGHT_RADIUS = 16
+    PLAYER_SIGHT_RADIUS = 8
+    
+    # Rendering colors
+    EXPLORED_TILE_COLOR = 'blue'  # Color for explored but not visible tiles
     
     @classmethod
     def get_map_bounds(cls):
