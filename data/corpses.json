@@ -1,0 +1,10 @@
+{
+  "default": {
+    "char": "inherit",
+    "color": "red"
+  },
+  "skeleton": {
+    "char": "inherit", 
+    "color": "bright_black"
+  }
+}

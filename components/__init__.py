@@ -2,14 +2,26 @@
 Game components module.
 """
 
-from .core import Position, Renderable, Player, Blocking, Visible
+from .core import Position, Renderable, Player, Blocking, Visible, Door, Prefab
 from .combat import Health, Stats
-from .ai import AI
+from .character import CharacterAttributes, Experience, XPValue
+from .ai import AI, AIType
+from .items import Item, Equipment, Consumable, Inventory, EquipmentSlots, Pickupable, Throwable
+from .corpse import Corpse, Race
+from .dead import Dead
 from .effects import Physics, StatusEffect, TileModification, WeaponEffects
+from .skills import Skills
+from .throwing import ThrowingCursor, ThrownObject
 
 __all__ = [
-    'Position', 'Renderable', 'Player', 'Blocking', 'Visible',
+    'Position', 'Renderable', 'Player', 'Blocking', 'Visible', 'Door', 'Prefab',
     'Health', 'Stats',
-    'AI',
-    'Physics', 'StatusEffect', 'TileModification', 'WeaponEffects'
+    'CharacterAttributes', 'Experience', 'XPValue',
+    'AI', 'AIType',
+    'Item', 'Equipment', 'Consumable', 'Inventory', 'EquipmentSlots', 'Pickupable', 'Throwable',
+    'Corpse', 'Race',
+    'Dead',
+    'Physics', 'StatusEffect', 'TileModification', 'WeaponEffects',
+    'Skills',
+    'ThrowingCursor', 'ThrownObject'
 ]

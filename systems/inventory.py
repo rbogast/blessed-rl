@@ -16,6 +16,16 @@ class InventorySystem(System):
     def __init__(self, world, message_log):
         super().__init__(world)
         self.message_log = message_log
+        self.render_system = None  # Will be set by the main game
+    
+    def set_render_system(self, render_system):
+        """Set the render system reference for menu invalidation."""
+        self.render_system = render_system
+    
+    def _invalidate_inventory_menu(self):
+        """Invalidate the inventory menu cache to force refresh."""
+        if self.render_system and hasattr(self.render_system, 'menu_manager'):
+            self.render_system.menu_manager.menus['inventory'].invalidate()
     
     def update(self, dt: float = 0.0) -> None:
         """Inventory system doesn't auto-update - it responds to player actions."""
@@ -41,10 +51,21 @@ class InventorySystem(System):
             
             # Get item name for message
             item = self.world.get_component(item_entity_id, Item)
-            item_name = item.name if item else "item"
+            if item:
+                item_name = item.name
+            else:
+                # Check if it's a corpse
+                from components.corpse import Corpse
+                corpse = self.world.get_component(item_entity_id, Corpse)
+                if corpse:
+                    item_name = f"{corpse.original_entity_type} corpse"
+                else:
+                    item_name = "item"
             
             if self.world.has_component(entity_id, Player):
                 self.message_log.add_info(f"You pick up the {item_name}.")
+                # Invalidate inventory menu to refresh display
+                self._invalidate_inventory_menu()
             
             return True
         
@@ -65,10 +86,21 @@ class InventorySystem(System):
             
             # Get item name for message
             item = self.world.get_component(item_entity_id, Item)
-            item_name = item.name if item else "item"
+            if item:
+                item_name = item.name
+            else:
+                # Check if it's a corpse
+                from components.corpse import Corpse
+                corpse = self.world.get_component(item_entity_id, Corpse)
+                if corpse:
+                    item_name = f"{corpse.original_entity_type} corpse"
+                else:
+                    item_name = "item"
             
             if self.world.has_component(entity_id, Player):
                 self.message_log.add_info(f"You drop the {item_name}.")
+                # Invalidate inventory menu to refresh display
+                self._invalidate_inventory_menu()
             
             return True
         
@@ -90,11 +122,12 @@ class InventorySystem(System):
         # Equip the item (this may return a previously equipped item)
         previous_item = equipment_slots.equip_item(item_entity_id, equipment.slot)
         
+        # Remove the equipped item from inventory
+        inventory.remove_item(item_entity_id)
+        
         # If there was a previously equipped item, put it back in inventory
         if previous_item:
-            # The previous item is automatically back in inventory space
-            # since we're swapping, not adding
-            pass
+            inventory.add_item(previous_item)
         
         # Get item name for message
         item = self.world.get_component(item_entity_id, Item)
@@ -102,26 +135,40 @@ class InventorySystem(System):
         
         if self.world.has_component(entity_id, Player):
             self.message_log.add_info(f"You equip the {item_name}.")
+            # Invalidate inventory menu to refresh display
+            self._invalidate_inventory_menu()
         
         return True
     
     def unequip_item(self, entity_id: int, slot: str) -> bool:
         """Unequip an item from a slot."""
         equipment_slots = self.world.get_component(entity_id, EquipmentSlots)
+        inventory = self.world.get_component(entity_id, Inventory)
         
-        if not equipment_slots:
+        if not equipment_slots or not inventory:
+            return False
+        
+        # Check if inventory has space
+        if inventory.is_full():
+            if self.world.has_component(entity_id, Player):
+                self.message_log.add_warning("Your inventory is full! Cannot unequip item.")
             return False
         
         # Unequip the item
         unequipped_item = equipment_slots.unequip_item(slot)
         
         if unequipped_item:
+            # Add the unequipped item back to inventory
+            inventory.add_item(unequipped_item)
+            
             # Get item name for message
             item = self.world.get_component(unequipped_item, Item)
             item_name = item.name if item else "item"
             
             if self.world.has_component(entity_id, Player):
                 self.message_log.add_info(f"You unequip the {item_name}.")
+                # Invalidate inventory menu to refresh display
+                self._invalidate_inventory_menu()
             
             return True
         

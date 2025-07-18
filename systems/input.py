@@ -46,8 +46,57 @@ class InputSystem(System):
         key_str = str(key)
         key_name = key.name if hasattr(key, 'name') else key_str
         
-        # Check if a menu is active first
-        if self.render_system and self._is_menu_active():
+        # Check if player is dead - if so, only allow waiting and quitting
+        player_entity = self.game_state.get_player_entity()
+        if player_entity:
+            from components.corpse import Corpse
+            if self.world.has_component(player_entity, Corpse):
+                # Player is dead (has corpse component) - only allow wait and quit
+                if key == '5':  # Numpad 5 for wait
+                    self._wait()
+                    return True
+                elif key == 'q':
+                    self._quit_game()
+                    return True
+                else:
+                    # Ignore all other inputs when dead
+                    return False
+        
+        # Check if throwing mode is active first
+        if self._is_throwing_active():
+            # In throwing mode - handle cursor movement and targeting
+            if key_str == '8':  # Numpad 8 - move cursor up
+                self._move_throwing_cursor(0, -1)
+                return True
+            elif key_str == '2':  # Numpad 2 - move cursor down
+                self._move_throwing_cursor(0, 1)
+                return True
+            elif key_str == '4':  # Numpad 4 - move cursor left
+                self._move_throwing_cursor(-1, 0)
+                return True
+            elif key_str == '6':  # Numpad 6 - move cursor right
+                self._move_throwing_cursor(1, 0)
+                return True
+            elif key_str == '7':  # Numpad 7 - move cursor up-left
+                self._move_throwing_cursor(-1, -1)
+                return True
+            elif key_str == '9':  # Numpad 9 - move cursor up-right
+                self._move_throwing_cursor(1, -1)
+                return True
+            elif key_str == '1':  # Numpad 1 - move cursor down-left
+                self._move_throwing_cursor(-1, 1)
+                return True
+            elif key_str == '3':  # Numpad 3 - move cursor down-right
+                self._move_throwing_cursor(1, 1)
+                return True
+            elif key_name == 'KEY_ENTER':  # Enter - execute throw
+                self._execute_throw()
+                return True
+            elif key == 'KEY_ESCAPE' or key == '\x1b':  # Escape - cancel throw
+                self._cancel_throw()
+                return True
+        # Check if a menu is active
+        elif self.render_system and self._is_menu_active():
             # In menu mode - handle navigation and selection
             if key_str == '8':  # Numpad 8 - navigate up
                 self._navigate_menu_up()
@@ -92,6 +141,9 @@ class InputSystem(System):
             return True
         elif key.lower() == 'd':
             self._drop_menu()
+            return True
+        elif key.lower() == 'f':
+            self._throwing_menu()
             return True
         elif key == 'KEY_ESCAPE' or key == '\x1b':  # Escape key
             if self.render_system and self._is_menu_active():
@@ -176,6 +228,10 @@ class InputSystem(System):
         """Show drop item menu."""
         self.pending_action = ('drop_menu',)
     
+    def _throwing_menu(self) -> None:
+        """Show throwing menu."""
+        self.pending_action = ('throwing_menu',)
+    
     def _select_item(self, item_number: int) -> None:
         """Select an item from the current menu."""
         self.pending_action = ('select_item', item_number)
@@ -211,3 +267,26 @@ class InputSystem(System):
             selected_item = self.render_system.get_selected_menu_item()
             if selected_item > 0:
                 self._select_item(selected_item)
+    
+    def _is_throwing_active(self) -> bool:
+        """Check if throwing mode is currently active."""
+        player_entity = self.game_state.get_player_entity()
+        if not player_entity:
+            return False
+        
+        # Check if player has throwing cursor component
+        from components.throwing import ThrowingCursor
+        return self.world.has_component(player_entity, ThrowingCursor)
+    
+    def _move_throwing_cursor(self, dx: int, dy: int) -> None:
+        """Move the throwing cursor."""
+        self.pending_action = ('move_throwing_cursor', dx, dy)
+        self.game_state.request_render()
+    
+    def _execute_throw(self) -> None:
+        """Execute the throw action."""
+        self.pending_action = ('execute_throw',)
+    
+    def _cancel_throw(self) -> None:
+        """Cancel the throw action."""
+        self.pending_action = ('cancel_throw',)

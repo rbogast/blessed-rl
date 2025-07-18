@@ -19,7 +19,7 @@
     "color": "red",
     "ai_type": "patrol",
     "xp_value": 25,
-    "weight": 180,
+    "weight": 300,
     "attributes": {
       "strength": 10,
       "agility": 8,
@@ -49,7 +49,7 @@
     "color": "brown",
     "ai_type": "guard",
     "xp_value": 50,
-    "weight": 300,
+    "weight": 600,
     "attributes": {
       "strength": 16,
       "agility": 6,

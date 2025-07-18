@@ -3,14 +3,18 @@ Combat system for handling battles between entities.
 """
 
 from ecs.system import System
-from components.core import Position, Player
+from components.core import Position, Player, Renderable
 from components.combat import Health
 from components.character import CharacterAttributes, Experience, XPValue
 from components.ai import AI
+from components.corpse import Corpse, Race
+from components.effects import Physics
+from components.items import Pickupable
 from game.game_state import GameStateManager
 from game.character_stats import update_health_from_attributes
 from .combat_helpers import CombatStatsResolver, CombatCalculator, WeaponEffectsHandler
 import random
+import json
 
 
 class CombatSystem(System):
@@ -26,6 +30,23 @@ class CombatSystem(System):
         # Initialize helper classes
         self.stats_resolver = CombatStatsResolver(world)
         self.weapon_effects_handler = WeaponEffectsHandler(world, effects_manager, message_log)
+        
+        # Load corpse configuration
+        self.corpse_config = self._load_corpse_config()
+    
+    def _load_corpse_config(self) -> dict:
+        """Load corpse configuration from JSON file."""
+        try:
+            with open('data/corpses.json', 'r') as f:
+                return json.load(f)
+        except FileNotFoundError:
+            # Return default configuration if file not found
+            return {
+                "default": {
+                    "char": "inherit",
+                    "color": "red"
+                }
+            }
     
     def update(self, dt: float = 0.0) -> None:
         """Combat system doesn't auto-update - it responds to attack requests."""
@@ -57,16 +78,23 @@ class CombatSystem(System):
         # Generate combat message
         self._generate_combat_message(attacker_id, target_id, actual_damage, is_critical)
         
-        # Handle weapon effects (knockback, bleeding, etc.)
-        if target_health.is_alive():  # Only apply effects if target is still alive
-            self.weapon_effects_handler.apply_weapon_effects(attacker_id, target_id, actual_damage)
+        # Calculate weapon effects before checking if target dies
+        # This allows us to apply physics to corpses if the target dies
+        weapon_effects_data = self.weapon_effects_handler.calculate_weapon_effects(attacker_id, target_id, actual_damage)
         
         # Trigger blood splatter for high damage (regardless of weapon effects)
         self._handle_blood_splatter(target_id, actual_damage)
         
         # Check if target died
         if not target_health.is_alive():
-            self._handle_death(attacker_id, target_id)
+            # Target died - create corpse and apply effects to it
+            corpse_id = self._handle_death(attacker_id, target_id)
+            if corpse_id and weapon_effects_data:
+                self.weapon_effects_handler.apply_calculated_effects(corpse_id, weapon_effects_data)
+        else:
+            # Target survived - apply effects normally
+            if weapon_effects_data:
+                self.weapon_effects_handler.apply_calculated_effects(target_id, weapon_effects_data)
         
         return True
     
@@ -132,16 +160,28 @@ class CombatSystem(System):
         
         return "entity"
     
-    def _handle_death(self, attacker_id: int, target_id: int) -> None:
-        """Handle entity death and XP gain."""
+    def _handle_death(self, attacker_id: int, target_id: int) -> int:
+        """Handle entity death and XP gain. Returns corpse entity ID if created."""
         target_name = self._get_entity_name(target_id)
         
         if self.world.has_component(target_id, Player):
-            # Player died - game over
-            position = self.world.get_component(target_id, Position)
-            final_x = position.x if position else 0
-            self.game_state.game_over("You died!", final_x)
-            self.message_log.add_combat("You have died!")
+            # Player died - convert to corpse but keep as player
+            race = self.world.get_component(target_id, Race)
+            if not race:
+                # Add default human race if missing
+                self.world.add_component(target_id, Race('human'))
+            
+            # Add corpse component to mark as dead
+            self.world.add_component(target_id, Corpse('human'))
+            
+            # Change player appearance to red
+            renderable = self.world.get_component(target_id, Renderable)
+            if renderable:
+                renderable.color = 'red'
+            
+            self.message_log.add_combat("You have died! The world continues around you...")
+            self.message_log.add_combat("Press 5 to wait and observe, or Q to quit.")
+            return None
         else:
             # Enemy died
             self.message_log.add_combat(f"The {target_name} dies!")
@@ -150,8 +190,55 @@ class CombatSystem(System):
             if self.world.has_component(attacker_id, Player):
                 self._award_xp(attacker_id, target_id)
             
+            # Create corpse before destroying the entity
+            corpse_id = self._create_corpse(target_id)
+            
             # Remove the entity from the world
             self.world.destroy_entity(target_id)
+            
+            return corpse_id
+    
+    def _create_corpse(self, entity_id: int) -> int:
+        """Create a corpse entity from a dead entity. Returns corpse entity ID."""
+        # Get components from the original entity
+        position = self.world.get_component(entity_id, Position)
+        renderable = self.world.get_component(entity_id, Renderable)
+        race = self.world.get_component(entity_id, Race)
+        physics = self.world.get_component(entity_id, Physics)
+        
+        if not position or not race:
+            return None  # Can't create corpse without position and race
+        
+        # Get corpse configuration
+        race_name = race.race_name
+        corpse_config = self.corpse_config.get(race_name, self.corpse_config.get('default', {}))
+        
+        # Determine corpse appearance
+        if corpse_config.get('char') == 'inherit' and renderable:
+            corpse_char = renderable.char
+        else:
+            corpse_char = corpse_config.get('char', '%')
+        
+        corpse_color = corpse_config.get('color', 'red')
+        
+        # Create corpse entity
+        corpse_entity = self.world.create_entity()
+        
+        # Add corpse components
+        self.world.add_component(corpse_entity, Position(position.x, position.y))
+        self.world.add_component(corpse_entity, Renderable(corpse_char, corpse_color))
+        self.world.add_component(corpse_entity, Corpse(race_name))
+        self.world.add_component(corpse_entity, Race(race_name))
+        self.world.add_component(corpse_entity, Pickupable())  # Corpses can be picked up
+        
+        # Preserve physics (weight) if available
+        if physics:
+            self.world.add_component(corpse_entity, Physics(mass=physics.mass))
+        else:
+            # Default weight for corpses
+            self.world.add_component(corpse_entity, Physics(mass=150.0))
+        
+        return corpse_entity
     
     def _award_xp(self, player_id: int, enemy_id: int) -> None:
         """Award XP to the player for killing an enemy."""

@@ -100,6 +100,14 @@ class CombatCalculator:
         return final_damage
 
 
+class WeaponEffectsData:
+    """Container for calculated weapon effects data."""
+    
+    def __init__(self):
+        self.knockback_data = None
+        self.slashing_data = None
+
+
 class WeaponEffectsHandler:
     """Handles weapon effects like knockback and bleeding."""
     
@@ -108,30 +116,89 @@ class WeaponEffectsHandler:
         self.effects_manager = effects_manager
         self.message_log = message_log
     
-    def apply_weapon_effects(self, attacker_id: int, target_id: int, damage: int) -> None:
-        """Apply all weapon effects from the attacker's weapon to the target."""
+    def calculate_weapon_effects(self, attacker_id: int, target_id: int, damage: int) -> WeaponEffectsData:
+        """Calculate weapon effects without applying them. Returns data for later application."""
         if not self.effects_manager:
-            return
+            return None
         
         weapon_entity = self._get_equipped_weapon(attacker_id)
         if not weapon_entity:
-            return
+            return None
         
         weapon_effects = self.world.get_component(weapon_entity, WeaponEffects)
         if not weapon_effects:
-            return
+            return None
         
         attacker_pos = self.world.get_component(attacker_id, Position)
         target_pos = self.world.get_component(target_id, Position)
         
         if not attacker_pos or not target_pos:
+            return None
+        
+        effects_data = WeaponEffectsData()
+        
+        # Calculate knockback effects
+        if weapon_effects.has_knockback() and random.random() < weapon_effects.knockback_chance:
+            calculated_force = self._calculate_knockback_force(attacker_id, weapon_effects)
+            effects_data.knockback_data = {
+                'force': calculated_force,
+                'source_x': attacker_pos.x,
+                'source_y': attacker_pos.y
+            }
+        
+        # Calculate slashing effects
+        if weapon_effects.has_slashing() and random.random() < weapon_effects.slashing_chance:
+            effects_data.slashing_data = {
+                'intensity': max(1, weapon_effects.slashing_damage // 2),
+                'duration': 5 + (damage // 5),
+                'splatter_intensity': max(1, damage // 10),
+                'target_x': target_pos.x,
+                'target_y': target_pos.y
+            }
+        
+        return effects_data if (effects_data.knockback_data or effects_data.slashing_data) else None
+    
+    def apply_calculated_effects(self, target_id: int, effects_data: WeaponEffectsData) -> None:
+        """Apply pre-calculated weapon effects to a target entity."""
+        if not effects_data or not self.effects_manager:
             return
         
-        # Apply knockback effects
-        self._apply_knockback_effect(attacker_id, target_id, weapon_effects, attacker_pos)
+        # Apply knockback if calculated
+        if effects_data.knockback_data:
+            # Ensure target has physics component
+            if not self.world.has_component(target_id, Physics):
+                self.world.add_component(target_id, Physics())
+            
+            self.effects_manager.trigger_effect("knockback",
+                target_id=target_id,
+                force=effects_data.knockback_data['force'],
+                source_x=effects_data.knockback_data['source_x'],
+                source_y=effects_data.knockback_data['source_y']
+            )
         
-        # Apply slashing effects
-        self._apply_slashing_effect(target_id, damage, weapon_effects, target_pos)
+        # Apply slashing effects if calculated
+        if effects_data.slashing_data:
+            # Apply bleeding status effect
+            self.effects_manager.trigger_effect("apply_bleeding",
+                target_id=target_id,
+                intensity=effects_data.slashing_data['intensity'],
+                duration=effects_data.slashing_data['duration']
+            )
+            
+            # Trigger blood splatter effect
+            self.effects_manager.trigger_effect("blood_splatter",
+                center_x=effects_data.slashing_data['target_x'],
+                center_y=effects_data.slashing_data['target_y'],
+                intensity=effects_data.slashing_data['splatter_intensity'],
+                radius=1
+            )
+    
+    def apply_weapon_effects(self, attacker_id: int, target_id: int, damage: int) -> None:
+        """Apply all weapon effects from the attacker's weapon to the target."""
+        # Calculate and immediately apply effects (legacy method)
+        effects_data = self.calculate_weapon_effects(attacker_id, target_id, damage)
+        if effects_data:
+            self.apply_calculated_effects(target_id, effects_data)
     
     def _apply_knockback_effect(self, attacker_id: int, target_id: int, weapon_effects: WeaponEffects, attacker_pos: Position) -> None:
         """Apply knockback effect if weapon has it."""

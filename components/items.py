@@ -118,3 +118,11 @@ class EquipmentSlots(Component):
 class Pickupable(Component):
     """Marker component for items that can be picked up from the ground."""
     pass
+
+
+class Throwable(Component):
+    """Component for items that can be thrown."""
+    
+    def __init__(self, weight: float = 1.0, damage_modifier: float = 1.0):
+        self.weight = weight  # Weight affects throwing distance and damage
+        self.damage_modifier = damage_modifier  # Multiplier for physics damage

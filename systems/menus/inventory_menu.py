@@ -16,6 +16,7 @@ class InventoryMenu(BaseMenu):
     def build_menu_items(self, player_entity: int) -> List[str]:
         """Build inventory display items."""
         from components.items import Inventory, Item
+        from components.corpse import Corpse
         
         items = []
         inventory = self.world.get_component(player_entity, Inventory)
@@ -29,10 +30,20 @@ class InventoryMenu(BaseMenu):
         
         # Add inventory items
         for i, item_entity_id in enumerate(inventory.items):
+            # Check if it's a regular item
             item = self.world.get_component(item_entity_id, Item)
             if item:
                 name = item.name[:18]
                 items.append(f"{i + 1:2d}. {name}")
+            else:
+                # Check if it's a corpse
+                corpse = self.world.get_component(item_entity_id, Corpse)
+                if corpse:
+                    name = f"{corpse.original_entity_type} corpse"[:18]
+                    items.append(f"{i + 1:2d}. {name}")
+                else:
+                    # Unknown item type
+                    items.append(f"{i + 1:2d}. Unknown item")
         
         return items
     

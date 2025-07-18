@@ -9,6 +9,8 @@ from components.combat import Health, Stats
 from components.character import CharacterAttributes, Experience
 from components.effects import Physics
 from components.items import Inventory, EquipmentSlots
+from components.corpse import Race
+from components.skills import Skills
 from game.world_gen import WorldGenerator
 from game.character_stats import calculate_max_hp
 from game.camera import Camera
@@ -23,6 +25,8 @@ from systems.inventory import InventorySystem
 from systems.ai import AISystem
 from systems.fov import FOVSystem
 from systems.render import RenderSystem
+from systems.skills import SkillsSystem
+from systems.throwing import ThrowingSystem
 from game.prefabs import PrefabManager
 from game.item_factory import ItemFactory
 from effects.core import EffectsManager
@@ -72,8 +76,16 @@ class RoguelikeGame:
         self.effects_manager.register_effect(BloodSplatterEffect(self.tile_effects_system))
         self.combat_system = CombatSystem(self.world, self.game_state, self.message_log, self.effects_manager, self.world_generator)
         self.inventory_system = InventorySystem(self.world, self.message_log)
+        # Set render system reference for inventory menu invalidation
+        self.inventory_system.set_render_system(self.render_system)
+        self.skills_system = SkillsSystem(self.world, self.message_log)
         self.ai_system = AISystem(self.world, self.movement_system, self.combat_system, self.message_log)
         self.fov_system = FOVSystem(self.world, self.world_generator)
+        self.throwing_system = ThrowingSystem(self.world, self.movement_system, self.fov_system, 
+                                            self.physics_system, self.skills_system, self.message_log)
+        
+        # Set throwing system reference in render system for cursor visualization
+        self.render_system.set_throwing_system(self.throwing_system)
         
         # Add systems to world
         self.world.systems.add_system(self.input_system)
@@ -82,6 +94,7 @@ class RoguelikeGame:
         self.world.systems.add_system(self.ai_system)
         self.world.systems.add_system(self.fov_system)
         self.world.systems.add_system(self.render_system)
+        self.world.systems.add_system(self.throwing_system)
         
         # Game initialization
         self._initialize_game()
@@ -127,6 +140,8 @@ class RoguelikeGame:
         self.world.add_component(player_entity, Visible())
         self.world.add_component(player_entity, Inventory(capacity=20))
         self.world.add_component(player_entity, EquipmentSlots())
+        self.world.add_component(player_entity, Skills())  # Add skills component
+        self.world.add_component(player_entity, Race('human'))  # Player is human
         
         # Set player in game state
         self.game_state.set_player_entity(player_entity)
@@ -183,10 +198,8 @@ class RoguelikeGame:
                     self.render_system.update()
                     self.game_state.render_complete()
                 
-                # Check for game over
+                # Check for game over (only quit if explicitly requested)
                 if self.game_state.is_game_over():
-                    # Wait for any key to exit
-                    self.render_system.term.inkey()
                     break
                 
                 # Get input (blocking - no timeout)
@@ -214,7 +227,16 @@ class RoguelikeGame:
         except KeyboardInterrupt:
             pass
         finally:
+            # Store quit status before cleanup
+            was_quit_normally = (self.game_state.is_game_over() and 
+                               self.game_state.game_over_reason == "Player quit")
+            
+            # Clean up the terminal first
             self.render_system.cleanup()
+            
+            # Now print the message to the restored terminal
+            if was_quit_normally:
+                print("Exited the game cleanly.")
     
     def _process_player_action(self) -> None:
         """Process the player's pending action."""
@@ -244,9 +266,18 @@ class RoguelikeGame:
             self.render_system.show_use_menu()
         elif action[0] == 'drop_menu':
             self.render_system.show_drop_menu()
+        elif action[0] == 'throwing_menu':
+            self.render_system.show_throwing_menu()
         elif action[0] == 'select_item':
             _, item_number = action
             self._handle_item_selection(player_entity, item_number)
+        elif action[0] == 'move_throwing_cursor':
+            _, dx, dy = action
+            self.throwing_system.move_cursor(player_entity, dx, dy)
+        elif action[0] == 'execute_throw':
+            self.throwing_system.execute_throw(player_entity)
+        elif action[0] == 'cancel_throw':
+            self.throwing_system.cancel_throwing(player_entity)
         elif action[0] == 'close_menus':
             self.render_system.hide_all_menus()
     
@@ -343,26 +374,20 @@ class RoguelikeGame:
         if not inventory or not equipment_slots:
             return
         
-        # Create starting items
-        rusty_sword = self.item_factory.create_item('rusty_sword')
-        leather_armor = self.item_factory.create_item('leather_armor')
-        health_potion = self.item_factory.create_item('health_potion')
+        # Create starting equipment - war maul and chain mail
+        war_maul = self.item_factory.create_item('war_maul')
+        chain_mail = self.item_factory.create_item('chain_mail')
         
-        # Add items to inventory
-        if rusty_sword:
-            inventory.add_item(rusty_sword)
-            # Auto-equip the sword
-            self.inventory_system.equip_item(player_entity, rusty_sword)
+        # Equip items directly (without adding to inventory first)
+        if war_maul:
+            equipment_slots.equip_item(war_maul, 'weapon')
+            self.message_log.add_info("You equip the War Maul.")
         
-        if leather_armor:
-            inventory.add_item(leather_armor)
-            # Auto-equip the armor
-            self.inventory_system.equip_item(player_entity, leather_armor)
+        if chain_mail:
+            equipment_slots.equip_item(chain_mail, 'armor')
+            self.message_log.add_info("You equip the Chain Mail.")
         
-        if health_potion:
-            inventory.add_item(health_potion)
-        
-        self.message_log.add_info("You start with basic equipment.")
+        self.message_log.add_info("You start equipped with a war maul and chain mail.")
     
     def _spawn_test_items(self, spawn_x: int, spawn_y: int) -> None:
         """Spawn some test items near the player for testing."""
@@ -370,8 +395,8 @@ class RoguelikeGame:
         if not chunk:
             return
         
-        # Find some open positions near the player to place items
-        test_items = ['iron_sword', 'war_maul', 'chain_mail', 'health_potion', 'greater_health_potion', 'ring_of_strength']
+        # Only spawn potions - no extra equipment
+        test_items = ['health_potion', 'greater_health_potion']
         
         placed_items = 0
         for dx in range(-3, 4):
@@ -401,7 +426,7 @@ class RoguelikeGame:
                 break
         
         if placed_items > 0:
-            self.message_log.add_info(f"Placed {placed_items} test items nearby.")
+            self.message_log.add_info(f"Placed {placed_items} potions nearby.")
     
     def _handle_pickup(self, player_entity: int) -> None:
         """Handle picking up items at player's position."""
@@ -440,6 +465,8 @@ class RoguelikeGame:
             self._handle_use_selection(player_entity, item_number)
         elif menu_manager.active_menu and menu_manager.active_menu.__class__.__name__ == 'DropMenu':
             self._handle_drop_selection(player_entity, item_number)
+        elif menu_manager.active_menu and menu_manager.active_menu.__class__.__name__ == 'ThrowingMenu':
+            self._handle_throwing_selection(player_entity, item_number)
         elif menu_manager.is_inventory_shown():
             # Just show item info for now
             inventory = self.world.get_component(player_entity, Inventory)
@@ -538,6 +565,30 @@ class RoguelikeGame:
                 # Invalidate render cache since item was added to world
                 self.render_system.invalidate_cache()
                 self.render_system.hide_all_menus()
+        else:
+            self.message_log.add_warning("Invalid selection.")
+    
+    def _handle_throwing_selection(self, player_entity: int, item_number: int) -> None:
+        """Handle throwing item selection."""
+        from components.items import Inventory
+        from systems.menus.throwing_menu import ThrowingMenu
+        
+        # Get throwable items using the throwing menu's method
+        throwing_menu = self.render_system.menu_manager.menus['throwing']
+        throwable_items = throwing_menu.get_throwable_items(player_entity)
+        
+        # Handle selection
+        if 1 <= item_number <= len(throwable_items):
+            item_entity_id = throwable_items[item_number - 1]
+            
+            # Start throwing with the selected item
+            success = self.throwing_system.start_throwing(player_entity, item_entity_id)
+            if success:
+                self.render_system.hide_all_menus()
+                # Request render to show the targeting cursor
+                self.game_state.request_render()
+            else:
+                self.message_log.add_warning("Cannot throw that item.")
         else:
             self.message_log.add_warning("Invalid selection.")
     

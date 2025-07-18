@@ -102,6 +102,25 @@ class ItemFactory:
             )
             self.world.add_component(entity_id, consumable_component)
         
+        # Add Physics component if specified
+        if 'physics' in definition:
+            from components.effects import Physics
+            physics_data = definition['physics']
+            physics_component = Physics(
+                mass=physics_data.get('mass', 1.0)
+            )
+            self.world.add_component(entity_id, physics_component)
+        
+        # Add Throwable component if specified
+        if 'throwable' in definition:
+            from components.items import Throwable
+            throwable_data = definition['throwable']
+            throwable_component = Throwable(
+                weight=throwable_data.get('weight', 1.0),
+                damage_modifier=throwable_data.get('damage_modifier', 1.0)
+            )
+            self.world.add_component(entity_id, throwable_component)
+        
         # Add Position component if coordinates provided
         if x is not None and y is not None:
             from components.core import Position

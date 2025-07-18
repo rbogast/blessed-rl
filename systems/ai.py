@@ -37,28 +37,47 @@ class AISystem(System):
         if not ai or not position or not health or not health.is_alive():
             return
         
-        # Only act if the entity is visible to the player
-        if not visible or not visible.visible:
+        # Only act if the entity is visible to the player (or if player is dead, always act)
+        player_entity = self._find_player_any_state()
+        player_alive = False
+        if player_entity:
+            player_health = self.world.get_component(player_entity, Health)
+            player_alive = player_health and player_health.is_alive()
+        
+        if not player_alive:
+            # Player is dead, AI should continue acting (wandering around)
+            pass
+        elif not visible or not visible.visible:
+            # Player is alive but this entity isn't visible, don't act
             return
         
-        # Find the player
-        player_entity = self._find_player()
-        if not player_entity:
-            return
+        # Check if current target is still alive
+        if ai.target_entity:
+            target_health = self.world.get_component(ai.target_entity, Health)
+            if not target_health or not target_health.is_alive():
+                ai.target_entity = None
+                ai.last_known_position = None
         
-        player_pos = self.world.get_component(player_entity, Position)
-        if not player_pos:
-            return
+        # Find the player (alive or dead)
+        player_pos = None
+        if player_entity:
+            player_pos = self.world.get_component(player_entity, Position)
         
-        # Calculate distance to player
-        distance = self.movement_system.calculate_distance(
-            position.x, position.y, player_pos.x, player_pos.y
-        )
-        
-        # Update AI state
-        if distance <= ai.detection_range:
-            ai.target_entity = player_entity
-            ai.last_known_position = (player_pos.x, player_pos.y)
+        # If player is alive, update targeting
+        if player_alive and player_pos:
+            # Calculate distance to player
+            distance = self.movement_system.calculate_distance(
+                position.x, position.y, player_pos.x, player_pos.y
+            )
+            
+            # Update AI state
+            if distance <= ai.detection_range:
+                ai.target_entity = player_entity
+                ai.last_known_position = (player_pos.x, player_pos.y)
+        elif not player_alive:
+            # Player is dead, clear target and wander
+            ai.target_entity = None
+            ai.last_known_position = None
         
         # Execute AI behavior
         if ai.ai_type == AIType.AGGRESSIVE:
@@ -69,12 +88,16 @@ class AISystem(System):
             self._guard_behavior(entity_id, ai, position)
     
     def _aggressive_behavior(self, entity_id: int, ai: AI, position: Position) -> None:
-        """Aggressive AI: moves toward and attacks the player."""
+        """Aggressive AI: moves toward and attacks the player, or wanders if no target."""
         if not ai.target_entity:
+            # No target, wander around
+            self._random_movement(entity_id)
             return
         
         target_pos = self.world.get_component(ai.target_entity, Position)
         if not target_pos:
+            # Target position not found, wander around
+            self._random_movement(entity_id)
             return
         
         # Check if we can attack
@@ -175,6 +198,17 @@ class AISystem(System):
             self.movement_system.try_move_entity(entity_id, dx, dy)
     
     def _find_player(self) -> int:
-        """Find the player entity."""
+        """Find the player entity (alive only)."""
+        player_entities = self.world.get_entities_with_components(Player, Position, Health)
+        for player_id in player_entities:
+            player_health = self.world.get_component(player_id, Health)
+            if player_health and player_health.is_alive():
+                return player_id
+        return None
+    
+    def _find_player_any_state(self) -> int:
+        """Find the player entity (alive or dead)."""
         player_entities = self.world.get_entities_with_components(Player, Position)
-        return next(iter(player_entities), None)
+        for player_id in player_entities:
+            return player_id
+        return None

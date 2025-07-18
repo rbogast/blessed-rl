@@ -119,8 +119,9 @@ class RenderSystem(System):
                         # Empty message line
                         line += ' ' * self.MESSAGE_WIDTH
             
-            # Add vertical border
-            line += self.text_formatter.apply_color('│', 'white')
+            # Add vertical border (if enabled)
+            if GameConfig.SHOW_VERTICAL_DIVIDER:
+                line += self.text_formatter.apply_color('│', 'white')
             
             # Right panel: Map or status line
             if screen_y < self.MAP_HEIGHT:
@@ -185,6 +186,10 @@ class RenderSystem(System):
         """Show the drop menu."""
         self.menu_manager.show_menu('drop')
     
+    def show_throwing_menu(self) -> None:
+        """Show the throwing menu."""
+        self.menu_manager.show_menu('throwing')
+    
     def toggle_inventory_display(self) -> None:
         """Toggle between showing character stats and inventory."""
         if self.menu_manager.is_inventory_shown():
@@ -212,6 +217,10 @@ class RenderSystem(System):
     def invalidate_cache(self) -> None:
         """Mark the entity cache as dirty."""
         self.entity_renderer.invalidate_cache()
+    
+    def set_throwing_system(self, throwing_system) -> None:
+        """Set the throwing system reference for rendering throwing cursor and line."""
+        self.tile_renderer.throwing_system = throwing_system
     
     def cleanup(self) -> None:
         """Clean up terminal state."""

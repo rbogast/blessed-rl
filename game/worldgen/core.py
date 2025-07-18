@@ -11,6 +11,7 @@ from components.combat import Health, Stats
 from components.character import CharacterAttributes, Experience, XPValue
 from components.effects import Physics
 from components.ai import AI, AIType
+from components.corpse import Race
 from game.character_stats import calculate_max_hp
 from game.glyph_config import GlyphConfig
 
@@ -278,6 +279,10 @@ class WorldGenerator:
         self.world.add_component(entity_id, AI(AIType(spawn_info['ai_type'])))
         self.world.add_component(entity_id, Blocking())
         self.world.add_component(entity_id, Visible())
+        
+        # Add Race component - use the race from spawn_info
+        race_name = spawn_info.get('race', 'unknown')
+        self.world.add_component(entity_id, Race(race_name))
         
         chunk.entities.append(entity_id)
     

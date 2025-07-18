@@ -208,6 +208,7 @@ class WorldScheduler:
             for _ in range(spawn_count):
                 enemy_type = rng.choice(enemy_types)
                 enemy_def = self.enemy_data[enemy_type].copy()
+                enemy_def['race'] = enemy_type  # Add the race name
                 spawns.append(enemy_def)
         
         return spawns

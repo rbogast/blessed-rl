@@ -39,10 +39,10 @@ class PhysicsSystem:
             return
         
         # Calculate knockback distance based on force and mass
-        # Use a more reasonable formula: force / (mass / 50) to get better distances
-        # This means a 150lb character with 15 strength (force ~22.5) moves ~7 tiles
+        # Further reduced knockback for more balanced gameplay
+        # Troll (300lbs) should move 1-2 tiles, Skeleton (80lbs) should move ~6 tiles
         mass_factor = physics.mass / 50.0  # Normalize mass around 150lbs = 3.0
-        knockback_distance = max(1, int(force / mass_factor))
+        knockback_distance = max(1, int(force / (mass_factor * 4.0)))
         
         # Normalize direction
         if direction_x == 0 and direction_y == 0:
@@ -85,7 +85,7 @@ class PhysicsSystem:
                         self.camera.follow_entity(new_position.x, new_position.y)
             else:
                 # Movement was blocked - take collision damage
-                collision_damage = max(1, int(force / 3))  # Collision damage based on force
+                collision_damage = max(2, int(force / 2))  # Increased collision damage based on force
                 damage_taken += collision_damage
                 
                 # Check what we hit

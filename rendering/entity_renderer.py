@@ -4,6 +4,7 @@ from typing import Tuple, Optional, Dict
 from components.core import Position, Renderable, Player
 from components.items import Pickupable
 from components.ai import AI
+from components.corpse import Corpse
 
 
 class EntityRenderer:
@@ -49,7 +50,8 @@ class EntityRenderer:
             # Categorize entities by priority
             player_entity = None
             character_entities = []  # NPCs/monsters with AI
-            item_entities = []
+            corpse_entities = []     # Corpses
+            item_entities = []       # Regular items
             other_entities = []
             
             for entity_id, char, color in entities_at_pos:
@@ -57,28 +59,39 @@ class EntityRenderer:
                     player_entity = (entity_id, char, color)
                 elif self.world.has_component(entity_id, AI):
                     character_entities.append((entity_id, char, color))
+                elif self.world.has_component(entity_id, Corpse):
+                    corpse_entities.append((entity_id, char, color))
                 elif self.world.has_component(entity_id, Pickupable):
                     item_entities.append((entity_id, char, color))
                 else:
                     other_entities.append((entity_id, char, color))
             
+            # Count total pickupable entities (corpses + items)
+            total_pickupable = len(corpse_entities) + len(item_entities)
+            has_corpses = len(corpse_entities) > 0
+            
             # Determine what to display based on priority:
             # 1. Player (highest priority)
             # 2. Character entities (NPCs/monsters)
-            # 3. Multiple items (show '%')
-            # 4. Single item
-            # 5. Other entities
+            # 3. Corpses (between NPCs and items)
+            # 4. Multiple pickupable entities (show '%' - red if corpses present)
+            # 5. Single pickupable entity
+            # 6. Other entities
             if player_entity:
                 # Player takes highest priority
                 self.entity_position_cache[pos_key] = (player_entity[1], player_entity[2])
             elif character_entities:
-                # Character entities (NPCs/monsters) take priority over items
+                # Character entities (NPCs/monsters) take priority over corpses and items
                 self.entity_position_cache[pos_key] = (character_entities[0][1], character_entities[0][2])
-            elif len(item_entities) > 1:
-                # Multiple items - show '%'
-                self.entity_position_cache[pos_key] = ('%', 'white')
-            elif len(item_entities) == 1:
-                # Single item
+            elif total_pickupable > 1:
+                # Multiple pickupable entities - show red '%' if corpses present, white '%' otherwise
+                stack_color = 'red' if has_corpses else 'white'
+                self.entity_position_cache[pos_key] = ('%', stack_color)
+            elif len(corpse_entities) == 1 and len(item_entities) == 0:
+                # Single corpse, no items
+                self.entity_position_cache[pos_key] = (corpse_entities[0][1], corpse_entities[0][2])
+            elif len(item_entities) == 1 and len(corpse_entities) == 0:
+                # Single item, no corpses
                 self.entity_position_cache[pos_key] = (item_entities[0][1], item_entities[0][2])
             elif other_entities:
                 # Other entities (lowest priority)

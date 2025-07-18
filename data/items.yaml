@@ -131,6 +131,11 @@ items:
     value: 20
     char: "!"
     color: "red"
+    physics:
+      mass: 0.5
+    throwable:
+      weight: 0.5
+      damage_modifier: 0.5
   
   greater_health_potion:
     name: "Greater Health Potion"
@@ -142,6 +147,11 @@ items:
     value: 50
     char: "!"
     color: "bright_red"
+    physics:
+      mass: 0.7
+    throwable:
+      weight: 0.7
+      damage_modifier: 0.6
   
   # Misc items
   gold_coin:

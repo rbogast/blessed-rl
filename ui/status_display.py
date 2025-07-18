@@ -170,10 +170,19 @@ class StatusDisplay:
             entity_pos = self.world.get_component(entity_id, Position)
             if entity_pos and entity_pos.x == position.x and entity_pos.y == position.y:
                 from components.core import Renderable
+                from components.corpse import Corpse
                 renderable = self.world.get_component(entity_id, Renderable)
                 item = self.world.get_component(entity_id, Item)
-                if renderable and item:
-                    items_at_pos.append((entity_id, renderable.char, renderable.color, item.name))
+                corpse = self.world.get_component(entity_id, Corpse)
+                
+                if renderable:
+                    if item:
+                        # Regular item
+                        items_at_pos.append((entity_id, renderable.char, renderable.color, item.name))
+                    elif corpse:
+                        # Corpse - display as "race corpse"
+                        corpse_name = f"{corpse.original_entity_type} corpse"
+                        items_at_pos.append((entity_id, renderable.char, renderable.color, corpse_name))
         
         # Build the display string
         if not items_at_pos:

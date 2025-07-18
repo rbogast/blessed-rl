@@ -117,12 +117,14 @@ class MenuManager:
         from systems.menus.equip_menu import EquipMenu
         from systems.menus.use_menu import UseMenu
         from systems.menus.drop_menu import DropMenu
+        from systems.menus.throwing_menu import ThrowingMenu
         
         self.menus = {
             'inventory': InventoryMenu(world),
             'equip': EquipMenu(world),
             'use': UseMenu(world),
-            'drop': DropMenu(world)
+            'drop': DropMenu(world),
+            'throwing': ThrowingMenu(world)
         }
     
     def show_menu(self, menu_type: str) -> None:

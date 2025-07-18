@@ -9,12 +9,15 @@ class GameConfig:
     # Base layout dimensions - change these to experiment with different layouts
     SCREEN_WIDTH = 80           # Total screen width
     SCREEN_HEIGHT = 24          # Total screen height
-    SIDEBAR_WIDTH = 28          # Width of left sidebar panel
+    SIDEBAR_WIDTH = 35          # Width of left sidebar panel
     CHARACTER_INFO_HEIGHT = 11  # Height of character info panel
     
+    # UI display options
+    SHOW_VERTICAL_DIVIDER = False  # Controls whether vertical divider bar is shown
+    
     # Calculated layout dimensions - automatically derived from base dimensions
-    BORDER_WIDTH = 1                                    # Vertical border between panels
-    MAP_WIDTH = SCREEN_WIDTH - SIDEBAR_WIDTH - BORDER_WIDTH  # Map panel width (55)
+    BORDER_WIDTH = 1 if SHOW_VERTICAL_DIVIDER else 0   # Vertical border between panels
+    MAP_WIDTH = SCREEN_WIDTH - SIDEBAR_WIDTH - BORDER_WIDTH  # Map panel width (51 or 52)
     MAP_HEIGHT = SCREEN_HEIGHT - 1                     # Map viewport height (23, -1 for status bar)
     GAME_INFO_HEIGHT = SCREEN_HEIGHT - CHARACTER_INFO_HEIGHT  # Message/menu panel height (13)
     
@@ -38,7 +41,7 @@ class GameConfig:
     LEGACY_HALO_SIZE = 5  # For compatibility layer
     
     # Field of View
-    PLAYER_SIGHT_RADIUS = 10
+    PLAYER_SIGHT_RADIUS = 16
     
     @classmethod
     def get_map_bounds(cls):

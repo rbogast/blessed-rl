@@ -4,7 +4,8 @@ Field of View system using recursive shadowcasting.
 
 from ecs.system import System
 from components.core import Position, Player, Visible, Door
-from game.world_gen import WorldGenerator
+from components.corpse import Corpse
+from game.worldgen.core import WorldGenerator
 from game.config import GameConfig
 import math
 
@@ -163,6 +164,16 @@ class FOVSystem(System):
             if position and door and position.x == x and position.y == y:
                 # Closed doors block vision, open doors don't
                 return not door.is_open
+        
+        # Check for large corpse piles (8+ corpses block vision)
+        corpse_count = 0
+        corpse_entities = self.world.get_entities_with_components(Position, Corpse)
+        for entity_id in corpse_entities:
+            position = self.world.get_component(entity_id, Position)
+            if position and position.x == x and position.y == y:
+                corpse_count += 1
+                if corpse_count >= 8:
+                    return True
         
         return False
     
