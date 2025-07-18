@@ -6,8 +6,8 @@
   biome: forest
   overrides:
     wall_probability: 0.15
-    enemy_density: 0.5
-    ca_iterations: 2
+    enemy_density: 1.0
+    ca_iterations: 3
 
 - from: 100
   to: 199

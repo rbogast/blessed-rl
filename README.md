@@ -60,22 +60,6 @@ python3 main.py
 - **Progress**: Your X position shows how far east you've traveled
 - **Death**: Game ends when you die, showing your final position
 
-### Screen Layout
-
-```
-┌─────────────────────────────────────────┬──────────────────────────────────────┐
-│ Map Viewport (19x40)                    │ Message Log (19x40)                  │
-│                                         │ > Game messages appear here          │
-│ @...........                            │ > Combat results                     │
-│ .###........                            │ > System notifications               │
-│ .#.#........                            │                                      │
-│ ............                            │                                      │
-├─────────────────────────────────────────┴──────────────────────────────────────┤
-│ Stats Panel (5x80)                                                            │
-│ HP: 50/50    X: 25    STR: 10  DEF: 5  SPD: 100                              │
-└────────────────────────────────────────────────────────────────────────────────┘
-```
-
 ## Architecture
 
 The game uses a clean Entity Component System architecture:
