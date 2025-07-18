@@ -152,8 +152,12 @@ class CombatSystem(System):
         if self.world.has_component(entity_id, Player):
             return "player"
         
-        # For enemies, we could look up their type from AI component
-        # For now, just return a generic name
+        # For enemies, use their race name from the Race component
+        race = self.world.get_component(entity_id, Race)
+        if race:
+            return race.race_name
+        
+        # Fallback to AI type if no race component
         ai = self.world.get_component(entity_id, AI)
         if ai:
             return ai.ai_type.value

@@ -97,11 +97,6 @@ The codebase is organized into clear modules:
 
 ## Enemy Types
 
-- **Goblin**: Aggressive, attacks on sight
-- **Orc**: Patrols area, attacks when close
-- **Skeleton**: Fast and aggressive
-- **Troll**: Guards territory, high health
-
 Each enemy has unique stats and AI behavior patterns defined in `data/enemies.json`.
 
 ## Effects

@@ -3,8 +3,20 @@
     "char": "inherit",
     "color": "red"
   },
-  "skeleton": {
-    "char": "inherit", 
-    "color": "bright_black"
+  "hound": {
+    "char": "inherit",
+    "color": "dark_red"
+  },
+  "guard": {
+    "char": "inherit",
+    "color": "red"
+  },
+  "goliath": {
+    "char": "inherit",
+    "color": "red"
+  },
+  "cultist": {
+    "char": "inherit",
+    "color": "dark_blue"
   }
 }
