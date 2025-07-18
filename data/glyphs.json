@@ -6,7 +6,7 @@
       "explored_color": "blue"
     },
     "wall": {
-      "char": "▓",
+      "char": "▒",
       "visible_color": "white",
       "explored_color": "blue"
     }
