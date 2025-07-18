@@ -8,8 +8,13 @@ A traditional terminal-based roguelike game built with Python and an Entity Comp
 - **Seamless Horizontal Scrolling**: Travel east through an infinite world
 - **Cellular Automata Map Generation**: Procedurally generated cave systems
 - **Recursive Shadowcasting FOV**: Realistic field of view and exploration
-- **Turn-based Combat**: Classic roguelike combat mechanics
+- **Turn-based Combat**: Classic roguelike combat mechanics with melee and ranged options
+- **Comprehensive Inventory System**: Item collection, management, and equipment
+- **Character Skills**: Progression system with skill development
+- **Advanced Throwing Mechanics**: Physics-based projectile combat with trajectory visualization
 - **AI Enemies**: Multiple enemy types with different behaviors
+- **Rich Item System**: Weapons, armor, consumables, and throwable items
+- **Interactive Menus**: Dedicated interfaces for inventory, throwing, and item management
 - **Terminal-based UI**: Clean 80x24 terminal interface using blessed
 
 ## Installation
@@ -36,12 +41,21 @@ python3 main.py
   1 2 3
   ```
 - **Space**: Wait/skip turn
+- **I**: Open inventory menu
+- **T**: Open throwing menu
+- **D**: Drop item
+- **U**: Use item
+- **E**: Equip/unequip item
 - **Q**: Quit game
 
 ### Game Mechanics
 
 - **Objective**: Journey eastward as far as possible
-- **Combat**: Move into enemies to attack them
+- **Combat**: Move into enemies to attack them with melee or ranged weapons
+- **Inventory**: Collect, manage, and use items found throughout the world
+- **Skills**: Character progression through skill development
+- **Throwing**: Ranged combat using throwable weapons and items
+- **Equipment**: Equip weapons and armor to improve combat effectiveness
 - **Exploration**: Areas become visible as you explore them
 - **Progress**: Your X position shows how far east you've traveled
 - **Death**: Game ends when you die, showing your final position
@@ -79,6 +93,9 @@ The game uses a clean Entity Component System architecture:
 - **AISystem**: Enemy behavior and pathfinding
 - **RenderSystem**: Terminal-based rendering with blessed
 - **EffectSystem**: Applies effects to entities and tiles
+- **InventorySystem**: Item collection, storage, and management
+- **SkillSystem**: Character progression and skill development
+- **ThrowingSystem**: Ranged combat mechanics and projectile physics
 
 ## Development
 
@@ -86,10 +103,13 @@ The codebase is organized into clear modules:
 
 - `ecs/`: Core ECS framework
 - `components/`: Game component definitions
-- `systems/`: Game system implementations
-- `game/`: Game-specific logic (world generation, camera, etc.)
+- `systems/`: Game system implementations and menu interfaces
+- `game/`: Game-specific logic (world generation, camera, item factory, etc.)
 - `effects/`: Effect definitions and implementations
-- `data/`: Game data files (enemy definitions)
+- `rendering/`: Entity and tile rendering systems
+- `ui/`: User interface components and text formatting
+- `utils/`: Utility functions (line drawing, etc.)
+- `data/`: Game data files (items, enemies, schedules, prefabs)
 
 ## Enemy Types
 
@@ -109,6 +129,41 @@ Effects are temporary modifications to entities or tiles, managed by the ECS. Th
 - **Status Effects**: Temporary conditions like poison or stun in `effects/status_effects.py`
 - **Tile Effects**: Changes to map tiles, such as creating blood splatters in `effects/tile_effects.py`
 - **Implementations**: Specific effect behaviors in `effects/implementations/`
+
+## Inventory & Items
+
+The game features a comprehensive item system with various types of equipment and consumables:
+
+- **Item Factory**: Procedural item generation and configuration in `game/item_factory.py`
+- **Item Data**: Item definitions and properties stored in `data/items.yaml`
+- **Inventory Management**: Full inventory system with pickup, drop, use, and equip functionality
+- **Equipment System**: Weapons, armor, and accessories that modify character stats
+- **Menu System**: Dedicated menus for inventory, equipment, dropping, and using items
+
+### Item Types
+
+Items are categorized by type and rarity, with various effects and properties:
+- **Weapons**: Melee and ranged weapons with different damage and accuracy stats
+- **Armor**: Protective gear that reduces incoming damage
+- **Consumables**: Potions, food, and other single-use items
+- **Throwables**: Items that can be thrown as projectiles for ranged combat
+
+## Skills System
+
+Character progression through skill development:
+
+- **Skill Components**: Character skills and progression tracking in `components/skills.py`
+- **Skill System**: Skill advancement and effect application in `systems/skills.py`
+- **Skill-based Combat**: Skills affect combat effectiveness, accuracy, and damage
+
+## Throwing System
+
+Advanced ranged combat mechanics:
+
+- **Throwing Components**: Projectile properties and throwing mechanics in `components/throwing.py`
+- **Throwing System**: Physics-based projectile movement and collision in `systems/throwing.py`
+- **Throwing Menu**: Dedicated interface for selecting and aiming throwable items
+- **Line Drawing**: Trajectory visualization and targeting assistance in `utils/line_drawing.py`
 
 ## World Generation
 
