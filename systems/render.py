@@ -78,19 +78,10 @@ class RenderSystem(System):
             
             # Left panel: Character info (first 10 rows) or messages (remaining rows)
             if screen_y < self.CHAR_INFO_HEIGHT:
-                # Character info section
+                # Character info section - use the same formatting approach as menus
                 char_info = self.status_display.get_character_info_line(screen_y)
-                visual_length = self.text_formatter.calculate_visual_length(char_info)
-                
-                # Truncate if too long
-                if visual_length > self.CHAR_INFO_WIDTH:
-                    char_info = self.text_formatter.truncate_to_visual_length(char_info, self.CHAR_INFO_WIDTH)
-                    visual_length = self.CHAR_INFO_WIDTH
-                
-                line += char_info
-                # Always pad to full width
-                padding_needed = self.CHAR_INFO_WIDTH - visual_length
-                line += ' ' * max(0, padding_needed)
+                formatted_char_info = self.text_formatter.format_character_info_line(char_info, self.CHAR_INFO_WIDTH)
+                line += formatted_char_info
             else:
                 # Message section - show inventory/menus or messages
                 message_row = screen_y - self.CHAR_INFO_HEIGHT
@@ -103,21 +94,18 @@ class RenderSystem(System):
                         formatted_line = self.text_formatter.format_menu_line(menu_line, is_highlighted, self.MESSAGE_WIDTH)
                         line += formatted_line
                     else:
-                        line += ' ' * self.MESSAGE_WIDTH
+                        line += self.term.ljust('', self.MESSAGE_WIDTH)
                 else:
                     # Show regular messages
                     if message_row < len(message_lines):
                         text, color = message_lines[message_row]
-                        # Truncate if too long
-                        if len(text) > self.MESSAGE_WIDTH:
-                            text = text[:self.MESSAGE_WIDTH]
-                        
-                        line += self.text_formatter.apply_color(text, color)
-                        # Pad to full width
-                        line += ' ' * (self.MESSAGE_WIDTH - len(text))
+                        colored_text = self.text_formatter.apply_color(text, color)
+                        # Use blessed's methods for truncation and padding
+                        formatted_text = self.term.ljust(self.term.truncate(colored_text, self.MESSAGE_WIDTH), self.MESSAGE_WIDTH)
+                        line += formatted_text
                     else:
-                        # Empty message line
-                        line += ' ' * self.MESSAGE_WIDTH
+                        # Empty message line - use blessed's ljust for padding
+                        line += self.term.ljust('', self.MESSAGE_WIDTH)
             
             # Add vertical border (if enabled)
             if GameConfig.SHOW_VERTICAL_DIVIDER:
@@ -154,21 +142,20 @@ class RenderSystem(System):
         message = self.game_state.get_game_over_message()
         lines = message.split('\n')
         
-        # Center the message on screen
+        # Center the message on screen using blessed's center method
         screen_height = self.term.height
-        screen_width = self.term.width
         start_y = (screen_height - len(lines)) // 2
         
         for i, line in enumerate(lines):
-            x = (screen_width - len(line)) // 2
             y = start_y + i
-            print(self.term.move_xy(x, y) + self.term.red + line + self.term.normal)
+            centered_line = self.term.center(self.term.red + line + self.term.normal)
+            print(self.term.move_y(y) + centered_line)
         
         # Show restart instruction
         restart_msg = "Press any key to exit..."
-        x = (screen_width - len(restart_msg)) // 2
         y = start_y + len(lines) + 2
-        print(self.term.move_xy(x, y) + restart_msg)
+        centered_restart = self.term.center(restart_msg)
+        print(self.term.move_y(y) + centered_restart)
         
         # Flush output
         print('', end='', flush=True)
