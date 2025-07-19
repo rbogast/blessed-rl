@@ -174,7 +174,7 @@ class PrefabSpawner:
         """Create an entity for a prefab tile."""
         if tile_type == 'wall':
             # Create stone wall entity (for prefab buildings)
-            wall_char, wall_color = self.glyph_config.get_entity_glyph('stone_wall_entity')
+            wall_char, wall_color = self.glyph_config.get_entity_glyph('stone_wall')
             entity_id = self.world.create_entity()
             
             self.world.add_component(entity_id, Position(global_x, global_y))

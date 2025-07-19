@@ -18,6 +18,7 @@ class FOVSystem(System):
         self.world_generator = world_generator
         self.sight_radius = sight_radius if sight_radius is not None else GameConfig.PLAYER_SIGHT_RADIUS
         self.last_player_pos = None  # Cache last position to avoid unnecessary recalculation
+        self.previously_visible_tiles = set()  # Track previously visible tiles
         
         # Octant multipliers for the 8 directions
         self.octant_multipliers = [
@@ -70,11 +71,8 @@ class FOVSystem(System):
             player_visible.visible = True
             player_visible.explored = True
         
-        # Mark player tile as visible
-        player_tile = self.world_generator.get_tile_at(player_pos.x, player_pos.y)
-        if player_tile:
-            player_tile.visible = True
-            player_tile.explored = True
+        # Mark player tile as visible (use _set_visible to track it)
+        self._set_visible(player_pos.x, player_pos.y)
         
         # Cast shadows in all 8 octants
         for octant in range(8):
@@ -142,12 +140,15 @@ class FOVSystem(System):
                 break
     
     def _clear_tile_visibility(self, player_x: int, player_y: int) -> None:
-        """Clear tile visibility in a radius around the player."""
-        for x in range(player_x - self.sight_radius, player_x + self.sight_radius + 1):
-            for y in range(player_y - self.sight_radius, player_y + self.sight_radius + 1):
-                tile = self.world_generator.get_tile_at(x, y)
-                if tile:
-                    tile.visible = False
+        """Clear tile visibility for previously visible tiles."""
+        # Clear all previously visible tiles
+        for x, y in self.previously_visible_tiles:
+            tile = self.world_generator.get_tile_at(x, y)
+            if tile:
+                tile.visible = False
+        
+        # Reset the set for this FOV calculation
+        self.previously_visible_tiles.clear()
     
     def _is_wall(self, x: int, y: int) -> bool:
         """Check if a position blocks line of sight."""
@@ -179,6 +180,9 @@ class FOVSystem(System):
     
     def _set_visible(self, x: int, y: int) -> None:
         """Mark a position as visible and explored."""
+        # Track this tile as visible for next clearing
+        self.previously_visible_tiles.add((x, y))
+        
         # Mark the tile as explored in the world generator
         tile = self.world_generator.get_tile_at(x, y)
         if tile:

@@ -3,27 +3,31 @@ Glyph configuration loader for centralized visual element management.
 """
 
 import json
+import yaml
 from typing import Dict, Any, Tuple
 
 
 class GlyphConfig:
-    """Manages loading and accessing glyph configurations from JSON."""
+    """Manages loading and accessing glyph configurations from YAML or JSON."""
     
-    def __init__(self, config_path: str = 'data/glyphs.json'):
+    def __init__(self, config_path: str = 'data/glyphs.yaml'):
         self.config_path = config_path
         self.config: Dict[str, Any] = {}
         self._load_config()
     
     def _load_config(self) -> None:
-        """Load glyph configuration from JSON file."""
+        """Load glyph configuration from YAML or JSON file."""
         try:
             with open(self.config_path, 'r') as f:
-                self.config = json.load(f)
+                if self.config_path.endswith('.yaml') or self.config_path.endswith('.yml'):
+                    self.config = yaml.safe_load(f)
+                else:
+                    self.config = json.load(f)
         except FileNotFoundError:
             print(f"Warning: Glyph config file '{self.config_path}' not found. Using defaults.")
             self._load_defaults()
-        except json.JSONDecodeError as e:
-            print(f"Warning: Invalid JSON in '{self.config_path}': {e}. Using defaults.")
+        except (json.JSONDecodeError, yaml.YAMLError) as e:
+            print(f"Warning: Invalid format in '{self.config_path}': {e}. Using defaults.")
             self._load_defaults()
     
     def _load_defaults(self) -> None:
