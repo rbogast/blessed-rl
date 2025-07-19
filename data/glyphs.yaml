@@ -1,0 +1,23 @@
+# Glyph configuration for visual elements in the game
+# This file defines how terrain and entities are displayed
+
+terrain:
+  floor:
+    char: "·"
+    visible_color: "white"
+    explored_color: "blue"
+  wall:
+    char: "▒"
+    visible_color: "white"
+    explored_color: "blue"
+
+entities:
+  # Player character
+  player:
+    char: "@"
+    color: "yellow"
+  
+  # Prefab building walls - stone construction
+  stone_wall:
+    char: "#"
+    color: "white"
