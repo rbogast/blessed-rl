@@ -8,6 +8,7 @@
     wall_probability: 0.15
     enemy_density: .4
     ca_iterations: 3
+    tree_density: 0.2
 
 - from: 64
   to: 127
@@ -15,6 +16,7 @@
   overrides:
     wall_probability: 0.30
     enemy_density: 0.4
+    tree_density: 0.4
 
 - from: 128
   to: 200

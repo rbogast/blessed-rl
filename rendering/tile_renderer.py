@@ -75,11 +75,8 @@ class TileRenderer:
                 return entity_char, GameConfig.EXPLORED_TILE_COLOR
         else:
             # No entity - render terrain
-            # Get the normal terrain glyph and color
-            if tile.is_wall:
-                terrain_char, terrain_color = self.glyph_config.get_terrain_glyph('wall', tile.visible)
-            else:
-                terrain_char, terrain_color = self.glyph_config.get_terrain_glyph('floor', tile.visible)
+            # Get the terrain glyph based on tile type
+            terrain_char, terrain_color = self.glyph_config.get_terrain_glyph(tile.tile_type, tile.visible)
             
             # Check if this tile is bloody (simple blood overlay system)
             if self.game_state and (world_x, world_y) in self.game_state.blood_tiles:
@@ -107,11 +104,8 @@ class TileRenderer:
                 return entity_char, GameConfig.EXPLORED_TILE_COLOR
         else:
             # No entity - render terrain
-            # Get the normal terrain glyph and color
-            if tile.is_wall:
-                terrain_char, terrain_color = self.glyph_config.get_terrain_glyph('wall', tile.visible)
-            else:
-                terrain_char, terrain_color = self.glyph_config.get_terrain_glyph('floor', tile.visible)
+            # Get the terrain glyph based on tile type
+            terrain_char, terrain_color = self.glyph_config.get_terrain_glyph(tile.tile_type, tile.visible)
             
             # Check if this tile is bloody (simple blood overlay system)
             if self.game_state and (world_x, world_y) in self.game_state.blood_tiles:
