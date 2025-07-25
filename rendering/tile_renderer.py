@@ -24,11 +24,19 @@ class TileRenderer:
         # Get tile info
         tile = self.world_generator.get_tile_at(world_x, world_y)
         if not tile:
+            if world_x >= 48 and world_x <= 54 and world_y >= 46 and world_y <= 52:  # Debug around player area
+                print(f"DEBUG RENDERER: No tile found at {world_x},{world_y}")
             return ' ', 'black'
         
         # Check visibility - only show tiles that have been explored
         if not tile.explored:
+            if world_x >= 48 and world_x <= 54 and world_y >= 46 and world_y <= 52:  # Debug around player area
+                print(f"DEBUG RENDERER: Tile at {world_x},{world_y} not explored (visible={tile.visible}, explored={tile.explored})")
             return ' ', 'black'  # Never explored - show nothing
+        else:
+            # Debug: Show when tiles ARE explored
+            if world_x >= 48 and world_x <= 54 and world_y >= 46 and world_y <= 52:  # Debug around player area
+                print(f"DEBUG RENDERER: Tile at {world_x},{world_y} IS explored! (visible={tile.visible}, explored={tile.explored})")
         
         # Check for throwing cursor and line first (highest priority)
         if self.throwing_system and self.game_state:
@@ -78,8 +86,12 @@ class TileRenderer:
             # Get the terrain glyph based on tile type
             terrain_char, terrain_color = self.glyph_config.get_terrain_glyph(tile.tile_type, tile.visible)
             
-            # Check if this tile is bloody (simple blood overlay system)
-            if self.game_state and (world_x, world_y) in self.game_state.blood_tiles:
+            # Check if this tile is bloody (level-based blood overlay system)
+            blood_tiles = set()
+            if hasattr(self.world_generator, 'get_blood_tiles'):
+                blood_tiles = self.world_generator.get_blood_tiles()
+            
+            if (world_x, world_y) in blood_tiles:
                 # Render the terrain glyph in red instead of normal color
                 if tile.visible:
                     return terrain_char, 'red'
@@ -107,8 +119,12 @@ class TileRenderer:
             # Get the terrain glyph based on tile type
             terrain_char, terrain_color = self.glyph_config.get_terrain_glyph(tile.tile_type, tile.visible)
             
-            # Check if this tile is bloody (simple blood overlay system)
-            if self.game_state and (world_x, world_y) in self.game_state.blood_tiles:
+            # Check if this tile is bloody (level-based blood overlay system)
+            blood_tiles = set()
+            if hasattr(self.world_generator, 'get_blood_tiles'):
+                blood_tiles = self.world_generator.get_blood_tiles()
+            
+            if (world_x, world_y) in blood_tiles:
                 # Render the terrain glyph in red instead of normal color
                 if tile.visible:
                     return terrain_char, 'red'

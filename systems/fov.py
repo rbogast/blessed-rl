@@ -5,7 +5,10 @@ Field of View system using recursive shadowcasting.
 from ecs.system import System
 from components.core import Position, Player, Visible, Door
 from components.corpse import Corpse
-from game.worldgen.core import WorldGenerator
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from game.level_world_gen import LevelWorldGenerator
 from game.config import GameConfig
 import math
 
@@ -13,7 +16,7 @@ import math
 class FOVSystem(System):
     """Implements recursive shadowcasting for field of view calculation."""
     
-    def __init__(self, world, world_generator: WorldGenerator, sight_radius: int = None):
+    def __init__(self, world, world_generator: "LevelWorldGenerator", sight_radius: int = None):
         super().__init__(world)
         self.world_generator = world_generator
         self.sight_radius = sight_radius if sight_radius is not None else GameConfig.PLAYER_SIGHT_RADIUS
@@ -48,6 +51,7 @@ class FOVSystem(System):
         player_pos = self.world.get_component(player_entity, Position)
         if not player_pos:
             return
+        
         
         # Clear tile visibility in world generator
         self._clear_tile_visibility(player_pos.x, player_pos.y)

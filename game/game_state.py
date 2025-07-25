@@ -4,6 +4,8 @@ Game state management.
 
 from enum import Enum
 from typing import Optional
+from game.dungeon_level import DungeonManager
+from game.config import GameConfig
 
 
 class GameState(Enum):
@@ -25,7 +27,9 @@ class GameStateManager:
         self.game_over_reason = ""
         self.final_position = 0
         self.needs_render = True  # Flag to control when screen should be redrawn
-        self.blood_tiles = set()  # Simple set of (x, y) coordinates for bloody tiles
+        
+        # Dungeon management
+        self.dungeon_manager = DungeonManager(persistent_levels=GameConfig.PERSISTENT_LEVELS)
     
     def set_state(self, new_state: GameState) -> None:
         """Change the game state."""
@@ -92,4 +96,30 @@ class GameStateManager:
         self.game_over_reason = ""
         self.final_position = 0
         self.needs_render = True
-        self.blood_tiles = set()  # Clear blood tiles on reset
+        self.dungeon_manager.clear_all_levels()  # Clear all dungeon levels
+    
+    # Dungeon level management methods
+    def get_current_level_id(self) -> int:
+        """Get the current dungeon level ID."""
+        return self.dungeon_manager.current_level_id
+    
+    def get_current_level(self):
+        """Get the current dungeon level."""
+        return self.dungeon_manager.get_current_level()
+    
+    def change_level(self, new_level_id: int) -> None:
+        """Change to a new dungeon level."""
+        old_level_id = self.dungeon_manager.current_level_id
+        self.dungeon_manager.change_level(new_level_id, old_level_id)
+    
+    def has_level(self, level_id: int) -> bool:
+        """Check if a level exists in memory."""
+        return self.dungeon_manager.has_level(level_id)
+    
+    def add_level(self, level) -> None:
+        """Add a level to the dungeon manager."""
+        self.dungeon_manager.add_level(level)
+    
+    def get_level(self, level_id: int):
+        """Get a specific level by ID."""
+        return self.dungeon_manager.get_level(level_id)

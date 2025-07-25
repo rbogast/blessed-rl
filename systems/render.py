@@ -72,6 +72,7 @@ class RenderSystem(System):
         left, top, right, bottom = self.camera.get_viewport_bounds()
         message_lines = self.message_log.get_recent_lines(self.MESSAGE_HEIGHT)
         
+        
         # Build each row of the screen (24 total rows)
         for screen_y in range(self.TOTAL_SCREEN_HEIGHT):
             line = ""

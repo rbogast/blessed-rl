@@ -28,9 +28,14 @@ class GameConfig:
     MESSAGE_LOG_WIDTH = SIDEBAR_WIDTH
     MESSAGE_LOG_HEIGHT = GAME_INFO_HEIGHT
     
-    # Chunk configuration
-    CHUNK_WIDTH = 40
-    CHUNK_HEIGHT = MAP_HEIGHT  # Chunks are full height
+    # Dungeon level configuration
+    LEVEL_WIDTH = MAP_WIDTH     # Width of each dungeon level - match viewport width
+    LEVEL_HEIGHT = MAP_HEIGHT   # Height of each dungeon level - match viewport height
+    PERSISTENT_LEVELS = False    # If True, keep levels in memory; if False, regenerate when revisited
+    
+    # Chunk configuration (legacy - now used for level generation)
+    CHUNK_WIDTH = LEVEL_WIDTH
+    CHUNK_HEIGHT = LEVEL_HEIGHT
     
     # Camera configuration
     CAMERA_VIEWPORT_WIDTH = VIEWPORT_WIDTH
@@ -41,7 +46,7 @@ class GameConfig:
     LEGACY_HALO_SIZE = 5  # For compatibility layer
     
     # Field of View
-    PLAYER_SIGHT_RADIUS = 8
+    PLAYER_SIGHT_RADIUS = 20
     
     # Rendering colors
     EXPLORED_TILE_COLOR = 'blue'  # Color for explored but not visible tiles
@@ -49,14 +54,19 @@ class GameConfig:
     @classmethod
     def get_map_bounds(cls):
         """Get map bounds as (min_x, min_y, max_x, max_y)."""
-        return (0, 0, float('inf'), cls.MAP_HEIGHT - 1)
+        return (0, 0, cls.LEVEL_WIDTH - 1, cls.LEVEL_HEIGHT - 1)
     
     @classmethod
     def is_valid_y(cls, y: int) -> bool:
         """Check if Y coordinate is within valid map bounds."""
-        return 0 <= y < cls.MAP_HEIGHT
+        return 0 <= y < cls.LEVEL_HEIGHT
+    
+    @classmethod
+    def is_valid_x(cls, x: int) -> bool:
+        """Check if X coordinate is within valid map bounds."""
+        return 0 <= x < cls.LEVEL_WIDTH
     
     @classmethod
     def is_valid_position(cls, x: int, y: int) -> bool:
         """Check if position is within valid map bounds."""
-        return x >= 0 and cls.is_valid_y(y)
+        return cls.is_valid_x(x) and cls.is_valid_y(y)

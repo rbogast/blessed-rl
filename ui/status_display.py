@@ -207,24 +207,31 @@ class StatusDisplay:
         return label_text + display_text
     
     def get_status_line(self) -> str:
-        """Get the status line showing biome, chunk, position, and turn."""
+        """Get the status line showing biome, level, position, and turn."""
         player_entity = self.game_state.get_player_entity()
         if not player_entity:
-            return "Biome: unknown | Chunk: -- | X: -- | Turn: --"
+            return "unknown | D: -- | --, -- | Turn: --"
         
         position = self.world.get_component(player_entity, Position)
         if not position:
-            return "Biome: unknown | Chunk: -- | X: -- | Turn: --"
+            return "unknown | D: -- | --, -- | Turn: --"
         
-        # Get current biome from scheduler
-        segment = self.world_generator._generator.scheduler.segment_at(position.x)
-        biome_name = segment.biome
+        # Get current level and biome
+        current_level_id = self.game_state.get_current_level_id()
         
-        # Calculate chunk
-        chunk_id = position.x // 40
+        # Get biome from level generator if available, otherwise use scheduler
+        if hasattr(self.world_generator, 'level_generator') and self.world_generator.level_generator:
+            biome_name = self.world_generator.level_generator.get_biome_for_level(current_level_id)
+        else:
+            # Fallback to scheduler
+            if hasattr(self.world_generator, '_generator') and self.world_generator._generator.scheduler:
+                segment = self.world_generator._generator.scheduler.segment_at(current_level_id)
+                biome_name = segment.biome
+            else:
+                biome_name = "unknown"
         
         # Build status line
-        status = f"Biome: {biome_name} | Chunk: {chunk_id} | X: {position.x} | Turn: {self.game_state.turn_count}"
+        status = f"{biome_name} | D: {current_level_id} | {position.x}, {position.y} | Turn: {self.game_state.turn_count}"
         
         # Pad or truncate to map width only
         map_width = GameConfig.MAP_WIDTH

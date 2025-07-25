@@ -10,6 +10,14 @@ terrain:
     char: "▒"
     visible_color: "yellow"
     explored_color: "blue"
+  stairs_down:
+    char: ">"
+    visible_color: "white"
+    explored_color: "blue"
+  stairs_up:
+    char: "<"
+    visible_color: "white"
+    explored_color: "blue"
   pine_tree:
     char: "↑"
     visible_color: "green"

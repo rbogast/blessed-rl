@@ -6,6 +6,7 @@ from typing import List, Dict, Any, Type
 from abc import ABC, abstractmethod
 import random
 from .core import GenLayer, GenContext, Tile
+from .maze_generator import MazeBiome
 
 
 class Biome(ABC):
@@ -53,6 +54,7 @@ class BiomeRegistry:
         self.register(ForestBiome())
         self.register(GraveyardBiome())
         self.register(DungeonBiome())
+        self.register(MazeBiome())
 
 
 # Generation Layers

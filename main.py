@@ -11,7 +11,7 @@ from components.effects import Physics
 from components.items import Inventory, EquipmentSlots
 from components.corpse import Race
 from components.skills import Skills
-from game.world_gen import WorldGenerator
+from game.level_world_gen import LevelWorldGenerator
 from game.character_stats import calculate_max_hp
 from game.camera import Camera
 from game.message_log import MessageLog
@@ -46,7 +46,7 @@ class RoguelikeGame:
         self.game_state = GameStateManager()
         self.message_log = MessageLog(width=GameConfig.SIDEBAR_WIDTH, height=GameConfig.GAME_INFO_HEIGHT, game_state=self.game_state)
         self.camera = Camera(viewport_width=GameConfig.MAP_WIDTH, viewport_height=GameConfig.MAP_HEIGHT)
-        self.world_generator = WorldGenerator(self.world, seed=random.randint(0, 1000000))
+        self.world_generator = LevelWorldGenerator(self.world, seed=random.randint(0, 1000000))
         
         # Initialize prefab system
         self.prefab_manager = PrefabManager(self.world, self.world_generator, self.message_log)
@@ -101,18 +101,21 @@ class RoguelikeGame:
     
     def _initialize_game(self) -> None:
         """Initialize the game world and player."""
-        self.message_log.add_system("Initializing ECS Roguelike...")
+        self.message_log.add_system("Initializing Dungeon Diving Roguelike...")
         self.message_log.add_system(f"World seed: {self.world_generator.seed}")
         
-        # Generate initial chunk
-        chunk = self.world_generator.generate_chunk(0)
-        self.message_log.add_system("Generated starting area")
+        # Generate initial level (level 0)
+        level_0 = self.world_generator.generate_level(0, None, self.game_state.turn_count)
+        self.game_state.add_level(level_0)
+        self.game_state.change_level(0)
+        self.world_generator.set_current_level(level_0)
+        self.message_log.add_system("Generated starting level")
         
         # Create player entity
         player_entity = self.world.create_entity()
         
-        # Find a safe spawn position in the first chunk
-        spawn_x, spawn_y = self._find_spawn_position(chunk)
+        # Find a safe spawn position on level 0
+        spawn_x, spawn_y = self._find_spawn_position(level_0)
         
         # Get player glyph from configuration
         glyph_config = GlyphConfig()
@@ -143,15 +146,14 @@ class RoguelikeGame:
         self.world.add_component(player_entity, Skills())  # Add skills component
         self.world.add_component(player_entity, Race('human'))  # Player is human
         
+        # Add player to current level
+        level_0.add_entity(player_entity)
+        
         # Set player in game state
         self.game_state.set_player_entity(player_entity)
         
-        # TEST: Add a small amount of blood tiles for testing
-        self.game_state.blood_tiles.add((spawn_x + 1, spawn_y))
-        self.game_state.blood_tiles.add((spawn_x - 1, spawn_y))
-        self.message_log.add_info("TEST: Added some blood tiles for testing!")
-        
-        # Update camera to follow player
+        # Update camera to follow player and set level bounds
+        self.camera.set_level_bounds(level_0.width, level_0.height)
         self.camera.follow_entity(spawn_x, spawn_y)
         
         # Calculate initial FOV
@@ -161,29 +163,36 @@ class RoguelikeGame:
         self._give_starting_items(player_entity)
         
         # Spawn some test items in the world
-        self._spawn_test_items(spawn_x, spawn_y)
+        self._spawn_test_items(spawn_x, spawn_y, level_0)
         
-        self.message_log.add_system(f"Player spawned at X={spawn_x}, Y={spawn_y}")
+        self.message_log.add_system(f"Player spawned at X={spawn_x}, Y={spawn_y} on level 0")
         self.message_log.add_info("Use numpad keys to move (7,8,9,4,6,1,2,3)")
         self.message_log.add_info("Press 5 to wait, I for inventory, G to pickup")
         self.message_log.add_info("Press E to equip/unequip, U to use, D to drop")
-        self.message_log.add_info("Journey east to progress!")
+        self.message_log.add_info("Step on '>' to descend to the next level!")
     
-    def _find_spawn_position(self, chunk) -> tuple:
-        """Find a safe spawn position in the chunk."""
-        # Try to find an open position near the west edge
-        for x in range(5):  # Check first 5 columns
-            for y in range(chunk.height):
-                if not chunk.is_wall(x, y):
-                    global_x = chunk.chunk_id * chunk.width + x
-                    return global_x, y
+    def _find_spawn_position(self, level) -> tuple:
+        """Find a safe spawn position in the level."""
+        # Try to find an open position near the center
+        center_x = level.width // 2
+        center_y = level.height // 2
+        
+        # Search in expanding rings from center
+        for radius in range(1, min(level.width, level.height) // 2):
+            for dx in range(-radius, radius + 1):
+                for dy in range(-radius, radius + 1):
+                    if abs(dx) == radius or abs(dy) == radius:  # Only check perimeter
+                        x = center_x + dx
+                        y = center_y + dy
+                        if (0 <= x < level.width and 0 <= y < level.height and 
+                            not level.is_wall(x, y)):
+                            return x, y
         
         # Fallback: find any open position
-        for y in range(chunk.height):
-            for x in range(chunk.width):
-                if not chunk.is_wall(x, y):
-                    global_x = chunk.chunk_id * chunk.width + x
-                    return global_x, y
+        for y in range(level.height):
+            for x in range(level.width):
+                if not level.is_wall(x, y):
+                    return x, y
         
         # Last resort: force a position
         return 5, 10
@@ -311,8 +320,8 @@ class RoguelikeGame:
                 if new_position:
                     self.camera.follow_entity(new_position.x, new_position.y)
                     
-                    # Generate new chunks if needed
-                    self._ensure_chunks_loaded(new_position.x)
+                    # Check for stairs and handle level transitions
+                    self._check_stairs_interaction(player_entity, new_position.x, new_position.y)
             else:
                 # Movement blocked
                 if self.world_generator.is_wall_at(target_x, target_y):
@@ -320,18 +329,136 @@ class RoguelikeGame:
                 else:
                     self.message_log.add_warning("Something blocks your way.")
     
-    def _ensure_chunks_loaded(self, player_x: int) -> None:
-        """Ensure necessary chunks are loaded around the player."""
-        current_chunk = player_x // 40
+    def _check_stairs_interaction(self, player_entity: int, x: int, y: int) -> None:
+        """Check if player is on stairs and handle level transitions."""
+        stairs_type = self.world_generator.is_stairs_at(x, y)
         
-        # Load current chunk and next chunk
-        for chunk_id in range(max(0, current_chunk - 1), current_chunk + 3):
-            if chunk_id not in self.world_generator.chunks:
-                chunk = self.world_generator.generate_chunk(chunk_id)
-                self.message_log.add_debug(f"Generated chunk {chunk_id}")
+        if stairs_type == 'down':
+            # Player stepped on downward stairs
+            current_level_id = self.game_state.get_current_level_id()
+            next_level_id = current_level_id + 1
+            
+            self.message_log.add_info(f"You descend to level {next_level_id}...")
+            self._change_to_level(player_entity, next_level_id, stairs_type)
+            
+        elif stairs_type == 'up':
+            # Player stepped on upward stairs
+            current_level_id = self.game_state.get_current_level_id()
+            if current_level_id > 0:
+                prev_level_id = current_level_id - 1
+                self.message_log.add_info(f"You ascend to level {prev_level_id}...")
+                self._change_to_level(player_entity, prev_level_id, stairs_type)
+            else:
+                self.message_log.add_warning("You can't go up from here.")
+    
+    def _change_to_level(self, player_entity: int, target_level_id: int, stairs_type: str) -> None:
+        """Change to a different dungeon level."""
+        current_level_id = self.game_state.get_current_level_id()
+        current_level = self.game_state.get_current_level()
+        
+        # Save current level's entity data (excluding player)
+        if current_level:
+            # Create a temporary list of non-player entities for saving
+            non_player_entities = [eid for eid in current_level.entities if eid != player_entity]
+            
+            if non_player_entities:
+                # Save entity data for non-player entities only
+                saved_entities = []
+                for entity_id in non_player_entities:
+                    if self.world.entities.is_alive(entity_id):
+                        # Get all components for this entity
+                        components = {}
+                        for component_type, component_dict in self.world.components._components.items():
+                            if entity_id in component_dict:
+                                component = component_dict[entity_id]
+                                # Store component data as a dictionary
+                                components[component_type.__name__] = component.__dict__.copy()
+                        
+                        if components:  # Only save if entity has components
+                            saved_entities.append(components)
                 
-                # Trigger prefab spawning for the previous chunk
-                self.prefab_manager.update_for_chunk_generation(chunk_id)
+                current_level.entity_data = saved_entities
+            else:
+                # No non-player entities to save
+                current_level.entity_data = []
+            
+            # Remove ALL entities from the ECS world except the player
+            entities_to_remove = []
+            for entity_id in self.world.entities.get_alive_entities():
+                if entity_id != player_entity:
+                    entities_to_remove.append(entity_id)
+            
+            for entity_id in entities_to_remove:
+                self.world.destroy_entity(entity_id)
+            
+            # Clear the level's entity list completely
+            current_level.entities.clear()
+        
+        # Check if target level exists, if not generate it
+        if not self.game_state.has_level(target_level_id):
+            # Determine stairs position for new level
+            stairs_up_pos = None
+            if stairs_type == 'down':
+                # Going down - place upward stairs at same position as current downward stairs
+                stairs_down_pos = self.world_generator.get_stairs_down_pos()
+                if stairs_down_pos:
+                    stairs_up_pos = stairs_down_pos
+                    self.message_log.add_system(f"Enforcing stair connection: down stairs at {stairs_down_pos} -> up stairs at {stairs_up_pos}")
+            
+            # Generate new level
+            new_level = self.world_generator.generate_level(target_level_id, stairs_up_pos, self.game_state.turn_count)
+            self.game_state.add_level(new_level)
+            
+            # Validate the stair connection was enforced correctly
+            if stairs_type == 'down' and current_level and stairs_up_pos:
+                if new_level.validate_stair_connection(current_level, 'up'):
+                    self.message_log.add_system(f"✓ Stair connection validated: Level {current_level_id} ↔ Level {target_level_id}")
+                else:
+                    self.message_log.add_warning(f"✗ Stair connection failed: Level {current_level_id} ↔ Level {target_level_id}")
+                    self.message_log.add_warning(f"  Current level down: {current_level.get_stairs_down_pos()}")
+                    self.message_log.add_warning(f"  New level up: {new_level.get_stairs_up_pos()}")
+        
+        # Change to target level
+        self.game_state.change_level(target_level_id)
+        target_level = self.game_state.get_current_level()
+        self.world_generator.set_current_level(target_level)
+        
+        # Restore entities for the target level
+        if target_level.entity_data:
+            target_level.restore_entity_data(self.world, target_level.entity_data)
+            # Clear the entity data after restoration to prevent duplication
+            target_level.entity_data = []
+        
+        # Position player on appropriate stairs
+        if stairs_type == 'down':
+            # Coming from above - place on upward stairs
+            stairs_pos = target_level.get_stairs_up_pos()
+        else:
+            # Coming from below - place on downward stairs
+            stairs_pos = target_level.get_stairs_down_pos()
+        
+        if stairs_pos:
+            position = self.world.get_component(player_entity, Position)
+            if position:
+                position.x, position.y = stairs_pos
+        
+        # Add player to new level
+        target_level.add_entity(player_entity)
+        
+        # Update camera bounds and position
+        self.camera.set_level_bounds(target_level.width, target_level.height)
+        player_pos = self.world.get_component(player_entity, Position)
+        if player_pos:
+            self.camera.follow_entity(player_pos.x, player_pos.y)
+        
+        # Update FOV for new level
+        self.fov_system.update()
+        
+        # Invalidate render cache
+        self.render_system.invalidate_cache()
+        
+        # Request render
+        self.game_state.request_render()
     
     def _restart_game(self) -> None:
         """Restart the game with a new world."""
@@ -347,7 +474,7 @@ class RoguelikeGame:
         self.message_log.clear()
         
         # Generate new seed and reinitialize world generator
-        self.world_generator = WorldGenerator(self.world, seed=random.randint(0, 1000000))
+        self.world_generator = LevelWorldGenerator(self.world, seed=random.randint(0, 1000000))
         
         # Reset prefab manager
         self.prefab_manager = PrefabManager(self.world, self.world_generator, self.message_log)
@@ -389,12 +516,8 @@ class RoguelikeGame:
         
         self.message_log.add_info("You start equipped with a war maul and chain mail.")
     
-    def _spawn_test_items(self, spawn_x: int, spawn_y: int) -> None:
+    def _spawn_test_items(self, spawn_x: int, spawn_y: int, level) -> None:
         """Spawn some test items near the player for testing."""
-        chunk = self.world_generator.chunks.get(0)
-        if not chunk:
-            return
-        
         # Only spawn potions - no extra equipment
         test_items = ['health_potion', 'greater_health_potion']
         
@@ -412,9 +535,8 @@ class RoguelikeGame:
                     continue
                 
                 # Check if position is valid and not a wall
-                if (test_y >= 0 and test_y < chunk.height and 
-                    test_x >= 0 and test_x < chunk.width * 40 and
-                    not self.world_generator.is_wall_at(test_x, test_y)):
+                if (0 <= test_x < level.width and 0 <= test_y < level.height and 
+                    not level.is_wall(test_x, test_y)):
                     
                     # Create and place item
                     item_id = test_items[placed_items]

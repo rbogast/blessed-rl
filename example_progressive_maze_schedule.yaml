@@ -1,0 +1,21 @@
+# Example: Progressive maze difficulty
+- from: 0
+  to: 2
+  biome: maze
+  overrides:
+    enemy_density: 0.2
+    maze_openings: 3    # Easy: few interconnections
+
+- from: 3
+  to: 5
+  biome: maze
+  overrides:
+    enemy_density: 0.3
+    maze_openings: 8    # Medium: moderate interconnections
+
+- from: 6
+  to: 8
+  biome: maze
+  overrides:
+    enemy_density: 0.4
+    maze_openings: 15   # Hard: many interconnections for complex tactics

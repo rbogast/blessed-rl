@@ -163,19 +163,19 @@ class WorldScheduler:
         """Set the biome registry for biome lookup."""
         self.biome_registry = registry
     
-    def segment_at(self, x: int) -> Segment:
-        """Get the segment containing the given x coordinate."""
+    def segment_at(self, level_id: int) -> Segment:
+        """Get the segment containing the given level ID."""
         for segment in self.segments:
-            if segment.contains(x):
+            if segment.contains(level_id):
                 return segment
         
-        # Return last segment if x is beyond all segments
+        # Return last segment if level_id is beyond all segments
         return self.segments[-1] if self.segments else Segment(0, 1000, 'default')
     
-    def params_at(self, x: int) -> Dict[str, float]:
-        """Get evaluated parameters at the given x coordinate."""
-        segment = self.segment_at(x)
-        progress = segment.get_progress(x)
+    def params_at(self, level_id: int) -> Dict[str, float]:
+        """Get evaluated parameters at the given level ID."""
+        segment = self.segment_at(level_id)
+        progress = segment.get_progress(level_id)
         
         params = {}
         for key, curve in segment.overrides.items():
@@ -192,10 +192,10 @@ class WorldScheduler:
             from .biomes import get_biome
             return get_biome(biome_name)
     
-    def pick_spawns(self, x: int, rng: random.Random) -> List[Dict[str, Any]]:
-        """Pick enemy spawns for the given location."""
-        segment = self.segment_at(x)
-        params = self.params_at(x)
+    def pick_spawns(self, level_id: int, rng: random.Random) -> List[Dict[str, Any]]:
+        """Pick enemy spawns for the given level."""
+        segment = self.segment_at(level_id)
+        params = self.params_at(level_id)
         
         # Get enemy density
         enemy_density = params.get('enemy_density', 0.3)
