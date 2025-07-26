@@ -106,6 +106,7 @@ class WorldScheduler:
     
     def load_schedule(self, filename: str) -> None:
         """Load schedule from YAML file."""
+        self.schedule_filename = filename  # Store filename for reloading
         try:
             with open(filename, 'r') as f:
                 # Create a custom loader with curve constructor
@@ -131,6 +132,11 @@ class WorldScheduler:
         except FileNotFoundError:
             print(f"Schedule file {filename} not found, using default schedule")
             self._create_default_schedule()
+    
+    def reload_schedule(self) -> None:
+        """Reload the schedule from the original file."""
+        if hasattr(self, 'schedule_filename') and self.schedule_filename:
+            self.load_schedule(self.schedule_filename)
     
     def _parse_curve(self, curve_data: Any) -> Curve:
         """Parse curve data from YAML."""

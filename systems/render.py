@@ -6,7 +6,7 @@ Refactored for modularity and scalability.
 from ecs.system import System
 from game.camera import Camera
 from game.message_log import MessageLog
-from game.world_gen import WorldGenerator
+from game.level_world_gen import LevelWorldGenerator
 from game.game_state import GameStateManager
 from game.glyph_config import GlyphConfig
 from game.config import GameConfig
@@ -24,7 +24,7 @@ class RenderSystem(System):
     """Handles all terminal rendering using blessed with fullscreen mode."""
     
     def __init__(self, world, camera: Camera, message_log: MessageLog, 
-                 world_generator: WorldGenerator, game_state: GameStateManager, tile_effects_system=None):
+                 world_generator: LevelWorldGenerator, game_state: GameStateManager, tile_effects_system=None):
         super().__init__(world)
         self.camera = camera
         self.message_log = message_log

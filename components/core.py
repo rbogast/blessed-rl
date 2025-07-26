@@ -50,4 +50,4 @@ class Prefab(Component):
     """Marker component for entities created from prefabs."""
     
     def __init__(self, prefab_id: str):
-        self.prefab_id = prefab_id  # For tracking/debugging
+        self.prefab_id = prefab_id

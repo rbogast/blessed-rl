@@ -5,7 +5,7 @@ Movement system for handling entity movement and collision detection.
 from ecs.system import System
 from components.core import Position, Blocking, Door, Renderable
 from components.combat import Health
-from game.world_gen import WorldGenerator
+from game.level_world_gen import LevelWorldGenerator
 from game.config import GameConfig
 from typing import Set
 
@@ -13,7 +13,7 @@ from typing import Set
 class MovementSystem(System):
     """Handles movement and collision detection."""
     
-    def __init__(self, world, world_generator: WorldGenerator, message_log):
+    def __init__(self, world, world_generator: LevelWorldGenerator, message_log):
         super().__init__(world)
         self.world_generator = world_generator
         self.message_log = message_log

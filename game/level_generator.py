@@ -78,18 +78,28 @@ class LevelGenerator:
             parameters = {}
         
         # Create generation context with turn-based seed
-        level_seed = self.seed + turn_count
+        level_seed = self.seed + turn_count + (level_id * 1000)  # Include level_id for uniqueness
         level_rng = random.Random(level_seed)
+        
+        
+        # Update the config seed for this generation
+        generation_config = WorldConfig(
+            chunk_width=self.config.chunk_width,
+            chunk_height=self.config.chunk_height,
+            halo_size=self.config.halo_size,
+            seed=level_seed  # Use the turn-based seed
+        )
+        
         ctx = GenContext(
             chunk_id=level_id,  # Use level_id as chunk_id
             seed=level_seed,
             rng=level_rng,
-            config=self.config,
+            config=generation_config,  # Use the updated config
             parameters=parameters
         )
         
         # Check if this is a maze biome that handles its own stair placement
-        if hasattr(biome, 'generate_with_stairs') and biome.name == 'maze':
+        if hasattr(biome, 'generate_with_stairs') and biome.name.lower() == 'maze':
             # Maze biome handles stair-aware generation
             suggested_downstairs = biome.generate_with_stairs(level.tiles, ctx, stairs_up_pos)
             

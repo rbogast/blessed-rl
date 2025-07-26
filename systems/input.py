@@ -39,7 +39,7 @@ class InputSystem(System):
     
     def handle_input(self, key) -> bool:
         """Handle a key press and return True if an action was queued."""
-        if not self.game_state.is_playing():
+        if not self.game_state.is_playing() and not self.game_state.is_map_preview():
             return False
         
         # Convert blessed key to string representation
@@ -131,8 +131,14 @@ class InputSystem(System):
             self._toggle_inventory()
             return True
         elif key.lower() == 'g':
-            self._pickup_items()
-            return True
+            if self.game_state.is_map_preview():
+                # In preview mode, G generates a new map
+                self.pending_action = ('generate_new_map',)
+                return True
+            else:
+                # In normal game, G picks up items
+                self._pickup_items()
+                return True
         elif key.lower() == 'e':
             self._equip_menu()
             return True

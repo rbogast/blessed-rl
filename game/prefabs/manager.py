@@ -52,11 +52,9 @@ class PrefabManager:
                 success = self.spawner.try_spawn_prefab(prefab, chunk_id, chunk_rng)
                 if success:
                     spawned_count += 1
-                    if self.message_log:
-                        self.message_log.add_debug(f"Spawned {prefab.name} in chunk {chunk_id}")
         
         if spawned_count > 0 and self.message_log:
-            self.message_log.add_debug(f"Placed {spawned_count} prefabs in chunk {chunk_id}")
+            self.message_log.add_info(f"Placed {spawned_count} prefabs in chunk {chunk_id}")
     
     def force_process_chunk(self, chunk_id: int) -> None:
         """Force processing of prefabs for a specific chunk (for testing)."""

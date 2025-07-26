@@ -24,19 +24,11 @@ class TileRenderer:
         # Get tile info
         tile = self.world_generator.get_tile_at(world_x, world_y)
         if not tile:
-            if world_x >= 48 and world_x <= 54 and world_y >= 46 and world_y <= 52:  # Debug around player area
-                print(f"DEBUG RENDERER: No tile found at {world_x},{world_y}")
             return ' ', 'black'
         
         # Check visibility - only show tiles that have been explored
         if not tile.explored:
-            if world_x >= 48 and world_x <= 54 and world_y >= 46 and world_y <= 52:  # Debug around player area
-                print(f"DEBUG RENDERER: Tile at {world_x},{world_y} not explored (visible={tile.visible}, explored={tile.explored})")
             return ' ', 'black'  # Never explored - show nothing
-        else:
-            # Debug: Show when tiles ARE explored
-            if world_x >= 48 and world_x <= 54 and world_y >= 46 and world_y <= 52:  # Debug around player area
-                print(f"DEBUG RENDERER: Tile at {world_x},{world_y} IS explored! (visible={tile.visible}, explored={tile.explored})")
         
         # Check for throwing cursor and line first (highest priority)
         if self.throwing_system and self.game_state:

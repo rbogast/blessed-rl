@@ -34,9 +34,6 @@ class MessageLog:
         if self.game_state:
             self.game_state.request_render()
     
-    def add_debug(self, text: str) -> None:
-        """Add a debug message."""
-        self.add_message(f"DEBUG: {text}", 'cyan')
     
     def add_info(self, text: str) -> None:
         """Add an info message."""

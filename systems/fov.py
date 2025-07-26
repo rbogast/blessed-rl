@@ -22,6 +22,7 @@ class FOVSystem(System):
         self.sight_radius = sight_radius if sight_radius is not None else GameConfig.PLAYER_SIGHT_RADIUS
         self.last_player_pos = None  # Cache last position to avoid unnecessary recalculation
         self.previously_visible_tiles = set()  # Track previously visible tiles
+        self.preview_mode = False  # Flag for map preview mode
         
         # Octant multipliers for the 8 directions
         self.octant_multipliers = [
@@ -30,6 +31,12 @@ class FOVSystem(System):
             [0,  1,  1,  0,  0, -1, -1,  0],
             [1,  0,  0,  1, -1,  0,  0, -1]
         ]
+    
+    def set_preview_mode(self, enabled: bool) -> None:
+        """Enable or disable preview mode."""
+        self.preview_mode = enabled
+        # Force recalculation when mode changes
+        self.last_player_pos = None
     
     def update(self, dt: float = 0.0) -> None:
         """Update FOV for all player entities only if they moved."""
@@ -40,11 +47,76 @@ class FOVSystem(System):
             if not player_pos:
                 continue
                 
-            # Only recalculate if player moved
+            # Only recalculate if player moved or preview mode changed
             current_pos = (player_pos.x, player_pos.y)
             if self.last_player_pos != current_pos:
-                self._calculate_fov(player_entity)
+                if self.preview_mode:
+                    self._calculate_preview_fov(player_entity)
+                else:
+                    self._calculate_fov(player_entity)
                 self.last_player_pos = current_pos
+    
+    def _calculate_preview_fov(self, player_entity: int) -> None:
+        """Calculate preview FOV - show almost all tiles except those completely surrounded by walls."""
+        player_pos = self.world.get_component(player_entity, Position)
+        if not player_pos:
+            return
+        
+        # Clear tile visibility in world generator
+        self._clear_tile_visibility(player_pos.x, player_pos.y)
+        
+        # Clear entity visibility and build position cache
+        self.entity_position_cache = {}
+        visible_entities = self.world.get_entities_with_components(Visible)
+        for entity_id in visible_entities:
+            visible = self.world.get_component(entity_id, Visible)
+            if visible:
+                visible.visible = False
+            
+            # Cache entity positions for fast lookup
+            position = self.world.get_component(entity_id, Position)
+            if position:
+                self.entity_position_cache[(position.x, position.y)] = entity_id
+        
+        # Player position is always visible
+        player_visible = self.world.get_component(player_entity, Visible)
+        if player_visible:
+            player_visible.visible = True
+            player_visible.explored = True
+        
+        # Get current level to determine bounds
+        current_level = self.world_generator.get_current_level()
+        if not current_level:
+            return
+        
+        # Make almost all tiles visible except those completely surrounded by walls
+        for y in range(current_level.height):
+            for x in range(current_level.width):
+                # Check if this tile is completely surrounded by walls on all 8 directions
+                if self._is_completely_surrounded_by_walls(x, y):
+                    # Don't make this tile visible
+                    continue
+                else:
+                    # Make this tile visible
+                    self._set_visible(x, y)
+    
+    def _is_completely_surrounded_by_walls(self, x: int, y: int) -> bool:
+        """Check if a position is completely surrounded by walls on all 8 directions."""
+        # Check all 8 adjacent positions
+        for dx in [-1, 0, 1]:
+            for dy in [-1, 0, 1]:
+                if dx == 0 and dy == 0:
+                    continue  # Skip the center position
+                
+                adj_x = x + dx
+                adj_y = y + dy
+                
+                # If any adjacent position is not a wall, this tile is not completely surrounded
+                if not self.world_generator.is_wall_at(adj_x, adj_y):
+                    return False
+        
+        # All 8 adjacent positions are walls
+        return True
     
     def _calculate_fov(self, player_entity: int) -> None:
         """Calculate field of view for a player entity."""

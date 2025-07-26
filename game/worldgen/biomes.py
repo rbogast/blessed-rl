@@ -41,8 +41,26 @@ class BiomeRegistry:
         self._biomes[biome.name] = biome
     
     def get(self, name: str) -> Biome:
-        """Get a biome by name."""
-        return self._biomes.get(name, self._biomes.get('default'))
+        """Get a biome by name - returns a fresh instance each time. Case-insensitive."""
+        # Try exact match first
+        biome_class = self._biomes.get(name)
+        
+        # If no exact match, try case-insensitive search
+        if not biome_class:
+            name_lower = name.lower()
+            for biome_name, biome_instance in self._biomes.items():
+                if biome_name.lower() == name_lower:
+                    biome_class = biome_instance
+                    break
+        
+        # Fallback to default
+        if not biome_class:
+            biome_class = self._biomes.get('default')
+        
+        if biome_class:
+            # Create a new instance to avoid state issues
+            return biome_class.__class__()
+        return None
     
     def list_biomes(self) -> List[str]:
         """List all registered biome names."""
@@ -54,6 +72,7 @@ class BiomeRegistry:
         self.register(ForestBiome())
         self.register(GraveyardBiome())
         self.register(DungeonBiome())
+        self.register(PlainsBiome())
         self.register(MazeBiome())
 
 
@@ -333,6 +352,39 @@ class SparseTreeLayer:
                 tiles[y][x].is_wall = True
 
 
+class OpenAreaLayer:
+    """Creates large open areas with minimal walls."""
+    
+    def generate(self, tiles: List[List[Tile]], ctx: GenContext) -> None:
+        """Create mostly open terrain with scattered wall clusters."""
+        height = len(tiles)
+        width = len(tiles[0]) if height > 0 else 0
+        
+        # Start with all floor
+        for y in range(height):
+            for x in range(width):
+                tiles[y][x].is_wall = False
+                tiles[y][x].tile_type = 'floor'
+        
+        # Add some scattered wall clusters
+        cluster_count = ctx.get_param('wall_clusters', 8)
+        cluster_size = ctx.get_param('cluster_size', 3)
+        
+        for _ in range(cluster_count):
+            # Pick random center for cluster
+            center_x = ctx.rng.randint(2, width - 3)
+            center_y = ctx.rng.randint(2, height - 3)
+            
+            # Create cluster around center
+            for dy in range(-cluster_size, cluster_size + 1):
+                for dx in range(-cluster_size, cluster_size + 1):
+                    x, y = center_x + dx, center_y + dy
+                    if (0 <= x < width and 0 <= y < height and 
+                        ctx.rng.random() < 0.6):  # 60% chance for each tile in cluster
+                        tiles[y][x].is_wall = True
+                        tiles[y][x].tile_type = 'wall'
+
+
 # Biome Implementations
 class DefaultBiome(Biome):
     """Simple default biome for testing."""
@@ -354,12 +406,12 @@ class ForestBiome(Biome):
     
     def _setup_layers(self) -> None:
         self.layers = [
-            NoiseLayer(wall_probability=0.35),
+            NoiseLayer(wall_probability=0.25),  # Much lower wall probability for open areas
             BorderWallLayer(),  # Add canyon walls before CA smoothing
-            CellularAutomataLayer(iterations=2),
+            CellularAutomataLayer(iterations=1, birth_limit=5, death_limit=2),  # Less aggressive CA
             ConnectivityLayer(),
-            TreeScatterLayer(tree_type='pine_tree', density=0.4, cluster_iterations=1),
-            SparseTreeLayer(tree_type='oak_tree', count=15)
+            TreeScatterLayer(tree_type='pine_tree', density=0.3, cluster_iterations=1),
+            SparseTreeLayer(tree_type='oak_tree', count=12)
         ]
 
 
@@ -386,6 +438,20 @@ class DungeonBiome(Biome):
             NoiseLayer(wall_probability=0.55),
             CellularAutomataLayer(iterations=5),
             ConnectivityLayer()
+        ]
+
+
+class PlainsBiome(Biome):
+    """Open plains biome with large open areas."""
+    
+    name = "plains"
+    
+    def _setup_layers(self) -> None:
+        self.layers = [
+            OpenAreaLayer(),  # Creates large open areas with scattered wall clusters
+            BorderWallLayer(),  # Add borders
+            ConnectivityLayer(),  # Ensure connectivity
+            SparseTreeLayer(tree_type='oak_tree', count=5)  # Very few trees
         ]
 
 

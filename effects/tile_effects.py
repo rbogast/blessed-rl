@@ -36,12 +36,10 @@ class TileEffectsSystem:
         """Add blood splatter around a center point."""
         tile_mod = self.get_tile_modification()
         if not tile_mod:
-            self.message_log.add_debug("ERROR: No tile modification component found!")
             return
         
         # Add blood to center tile
         tile_mod.add_blood_tile(center_x, center_y, intensity)
-        self.message_log.add_debug(f"Added blood to center tile ({center_x}, {center_y}) with intensity {intensity}")
         
         # Add blood to surrounding tiles based on intensity and radius
         tiles_affected = 0
@@ -67,11 +65,6 @@ class TileEffectsSystem:
                     blood_intensity = max(1, intensity - distance)
                     tile_mod.add_blood_tile(blood_x, blood_y, blood_intensity)
                     tiles_affected += 1
-                    self.message_log.add_debug(f"Added blood to tile ({blood_x}, {blood_y}) with intensity {blood_intensity}")
-        
-        # Debug: Show total bloody tiles
-        total_bloody = len(tile_mod.get_all_bloody_tiles())
-        self.message_log.add_debug(f"Total bloody tiles now: {total_bloody}")
         
         if tiles_affected > 0:
             self.message_log.add_info(f"Blood splatters across {tiles_affected + 1} tiles!")
@@ -80,12 +73,8 @@ class TileEffectsSystem:
         """Check if a tile is bloody."""
         tile_mod = self.get_tile_modification()
         if tile_mod:
-            result = tile_mod.is_bloody(x, y)
-            if result:
-                print(f"DEBUG: is_tile_bloody({x}, {y}) = True")
-            return result
+            return tile_mod.is_bloody(x, y)
         else:
-            print(f"DEBUG: is_tile_bloody({x}, {y}) = False (no tile_mod)")
             return False
     
     def get_blood_intensity(self, x: int, y: int) -> int:

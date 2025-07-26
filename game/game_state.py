@@ -14,6 +14,7 @@ class GameState(Enum):
     PAUSED = "paused"
     GAME_OVER = "game_over"
     MENU = "menu"
+    MAP_PREVIEW = "map_preview"
 
 
 class GameStateManager:
@@ -42,6 +43,10 @@ class GameStateManager:
     def is_game_over(self) -> bool:
         """Check if the game is over."""
         return self.current_state == GameState.GAME_OVER
+    
+    def is_map_preview(self) -> bool:
+        """Check if the game is in map preview mode."""
+        return self.current_state == GameState.MAP_PREVIEW
     
     def set_player_entity(self, entity_id: int) -> None:
         """Set the player entity ID."""

@@ -241,3 +241,171 @@ class StatusDisplay:
             status += ' ' * (map_width - len(status))
         
         return status
+
+
+class MapGenStatusDisplay:
+    """Handles display of map generation information for the preview tool."""
+    
+    def __init__(self, world, map_preview_tool, text_formatter):
+        self.world = world
+        self.map_preview_tool = map_preview_tool
+        self.formatter = text_formatter
+        self.CHAR_INFO_WIDTH = GameConfig.SIDEBAR_WIDTH
+    
+    def get_character_info_line(self, line_num: int) -> str:
+        """Get a line of map generation information."""
+        return self._get_mapgen_line(line_num)
+    
+    def _get_mapgen_line(self, line_num: int) -> str:
+        """Get a line of map generation parameters."""
+        # Check if this line corresponds to a parameter that can be selected
+        is_selected = line_num == self.map_preview_tool.selected_parameter
+        is_editing = is_selected and self.map_preview_tool.editing_parameter
+        
+        if line_num == 0:
+            # Generation line (shows current layout variation)
+            if is_editing:
+                value = self.map_preview_tool.edit_buffer
+            else:
+                value = str(self.map_preview_tool.generation_counter)
+            
+            if is_selected:
+                if is_editing:
+                    return self.formatter.apply_color("> Generation: ", "yellow") + self.formatter.apply_color(value + "_", "yellow")
+                else:
+                    return self.formatter.apply_color("> Generation: ", "cyan") + self.formatter.apply_color(value, "white")
+            else:
+                return self.formatter.apply_color("Generation: ", "bright_black") + self.formatter.apply_color(value, "white")
+        elif line_num == 1:
+            # Biome line
+            if is_editing:
+                value = self.map_preview_tool.edit_buffer
+            else:
+                value = self.map_preview_tool._get_current_parameter_value('biome')
+            
+            if is_selected:
+                if is_editing:
+                    return self.formatter.apply_color("> Biome: ", "yellow") + self.formatter.apply_color(value + "_", "yellow")
+                else:
+                    return self.formatter.apply_color("> Biome: ", "cyan") + self.formatter.apply_color(value, "white")
+            else:
+                return self.formatter.apply_color("Biome: ", "bright_black") + self.formatter.apply_color(value, "white")
+        elif line_num == 2:
+            # Wall Probability
+            if is_editing:
+                value = self.map_preview_tool.edit_buffer
+            else:
+                value = f"{self.map_preview_tool._get_current_parameter_value('wall_probability'):.2f}"
+            
+            if is_selected:
+                if is_editing:
+                    return self.formatter.apply_color("> Wall Prob: ", "yellow") + self.formatter.apply_color(value + "_", "yellow")
+                else:
+                    return self.formatter.apply_color("> Wall Prob: ", "cyan") + self.formatter.apply_color(value, "white")
+            else:
+                return self.formatter.apply_color("Wall Prob: ", "bright_black") + self.formatter.apply_color(value, "white")
+        elif line_num == 3:
+            # CA Iterations
+            if is_editing:
+                value = self.map_preview_tool.edit_buffer
+            else:
+                value = str(self.map_preview_tool._get_current_parameter_value('ca_iterations'))
+            
+            if is_selected:
+                if is_editing:
+                    return self.formatter.apply_color("> CA Iter: ", "yellow") + self.formatter.apply_color(value + "_", "yellow")
+                else:
+                    return self.formatter.apply_color("> CA Iter: ", "cyan") + self.formatter.apply_color(value, "white")
+            else:
+                return self.formatter.apply_color("CA Iter: ", "bright_black") + self.formatter.apply_color(value, "white")
+        elif line_num == 4:
+            # Tree Density
+            if is_editing:
+                value = self.map_preview_tool.edit_buffer
+            else:
+                value = f"{self.map_preview_tool._get_current_parameter_value('tree_density'):.2f}"
+            
+            if is_selected:
+                if is_editing:
+                    return self.formatter.apply_color("> Tree Dens: ", "yellow") + self.formatter.apply_color(value + "_", "yellow")
+                else:
+                    return self.formatter.apply_color("> Tree Dens: ", "cyan") + self.formatter.apply_color(value, "white")
+            else:
+                return self.formatter.apply_color("Tree Dens: ", "bright_black") + self.formatter.apply_color(value, "white")
+        elif line_num == 5:
+            # Tree Count
+            if is_editing:
+                value = self.map_preview_tool.edit_buffer
+            else:
+                value = str(self.map_preview_tool._get_current_parameter_value('tree_count'))
+            
+            if is_selected:
+                if is_editing:
+                    return self.formatter.apply_color("> Tree Count: ", "yellow") + self.formatter.apply_color(value + "_", "yellow")
+                else:
+                    return self.formatter.apply_color("> Tree Count: ", "cyan") + self.formatter.apply_color(value, "white")
+            else:
+                return self.formatter.apply_color("Tree Count: ", "bright_black") + self.formatter.apply_color(value, "white")
+        elif line_num == 6:
+            # Border Walls (if present) - not editable, so no highlighting
+            from game.worldgen.biomes import get_biome
+            biome = get_biome(self.map_preview_tool._get_current_parameter_value('biome'))
+            if biome and biome.layers:
+                # Look for BorderWallLayer
+                for layer in biome.layers:
+                    if hasattr(layer, 'border_rows'):
+                        border_rows = layer.border_rows
+                        border_str = ",".join(map(str, border_rows))
+                        return self.formatter.apply_color("Borders: ", "bright_black") + self.formatter.apply_color(border_str, "white")
+            return self.formatter.apply_color("Borders: ", "bright_black") + self.formatter.apply_color("none", "white")
+        elif line_num == 7:
+            # Layer Count - not editable, so no highlighting
+            from game.worldgen.biomes import get_biome
+            biome = get_biome(self.map_preview_tool._get_current_parameter_value('biome'))
+            if biome:
+                layer_count = len(biome.layers)
+                return self.formatter.apply_color("Layers: ", "bright_black") + self.formatter.apply_color(str(layer_count), "white")
+            return self.formatter.apply_color("Layers: ", "bright_black") + self.formatter.apply_color("--", "white")
+        elif line_num == 8:
+            # Map Size - not editable, so no highlighting
+            if self.map_preview_tool.current_level:
+                width = self.map_preview_tool.current_level.width
+                height = self.map_preview_tool.current_level.height
+                return self.formatter.apply_color("Size: ", "bright_black") + self.formatter.apply_color(f"{width}x{height}", "white")
+            return self.formatter.apply_color("Size: ", "bright_black") + self.formatter.apply_color("--x--", "white")
+        elif line_num == 9:
+            # Controls hint
+            if self.map_preview_tool.editing_parameter:
+                return self.formatter.apply_color("Enter: Apply, Esc: Cancel", "bright_black")
+            else:
+                return self.formatter.apply_color("↑↓: Navigate, Enter: Edit", "bright_black")
+        else:
+            # Empty lines
+            return ""
+    
+    def get_status_line(self) -> str:
+        """Get the status line for map preview mode."""
+        # Get current position from camera or player
+        player_entity = self.map_preview_tool.game_state.get_player_entity()
+        if player_entity:
+            from components.core import Position
+            position = self.world.get_component(player_entity, Position)
+            if position:
+                pos_str = f"{position.x}, {position.y}"
+            else:
+                pos_str = "--, --"
+        else:
+            pos_str = "--, --"
+        
+        # Build status line for preview mode
+        biome_name = self.map_preview_tool._get_current_parameter_value('biome')
+        status = f"{biome_name} | Preview | {pos_str} | Seed: {self.map_preview_tool.world_generator.seed}"
+        
+        # Pad or truncate to map width only
+        map_width = GameConfig.MAP_WIDTH
+        if len(status) > map_width:
+            status = status[:map_width]
+        else:
+            status += ' ' * (map_width - len(status))
+        
+        return status
