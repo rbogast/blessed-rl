@@ -190,13 +190,10 @@ class WorldScheduler:
         return params
     
     def get_biome(self, biome_name: str):
-        """Get a biome instance by name."""
-        if self.biome_registry:
-            return self.biome_registry.get(biome_name)
-        else:
-            # Fallback
-            from .biomes import get_biome
-            return get_biome(biome_name)
+        """Get a template instance by name (renamed from biome for compatibility)."""
+        # Use the new template system
+        from .templates import get_template
+        return get_template(biome_name)
     
     def pick_spawns(self, level_id: int, rng: random.Random) -> List[Dict[str, Any]]:
         """Pick enemy spawns for the given level."""

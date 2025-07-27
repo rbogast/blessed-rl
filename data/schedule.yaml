@@ -3,7 +3,7 @@
 
 - from: 0
   to: 1
-  biome: Maze
+  biome: forest
   overrides:
     wall_probability: 0.2
     enemy_density: 0.4

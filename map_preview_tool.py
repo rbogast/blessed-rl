@@ -50,19 +50,21 @@ class MapPreviewTool:
         self.selected_parameter = 0
         self.editing_parameter = False
         self.edit_buffer = ""
-        self.biome_menu_active = False
+        self.template_menu_active = False
         
-        # Get available biomes dynamically from the registry
-        from game.worldgen.biomes import list_biomes
-        available_biomes = list_biomes()
+        # Get available templates dynamically from the registry
+        from game.worldgen.templates import list_templates
+        available_templates = list_templates()
         
-        # Create biome selection menu
-        from systems.menus.biome_menu import BiomeSelectionMenu
-        self.biome_menu = BiomeSelectionMenu(self.world, available_biomes)
+        # Create template selection menu
+        from systems.menus.template_menu import TemplateSelectionMenu
+        self.template_menu = TemplateSelectionMenu(self.world, available_templates)
         
         self.parameter_definitions = {
+            'seed': {'type': int, 'min': 0, 'max': 1000000},
+            'generation': {'type': int, 'min': 0, 'max': 1000},
             'level': {'type': int, 'min': 0, 'max': 100},
-            'biome': {'type': str, 'options': available_biomes},
+            'template': {'type': str, 'options': available_templates},
             'wall_probability': {'type': float, 'min': 0.0, 'max': 1.0},
             'ca_iterations': {'type': int, 'min': 0, 'max': 10},
             'tree_density': {'type': float, 'min': 0.0, 'max': 1.0},
@@ -70,7 +72,9 @@ class MapPreviewTool:
             'enemy_density': {'type': float, 'min': 0.0, 'max': 2.0},
             'maze_openings': {'type': int, 'min': 0, 'max': 50}
         }
-        self.parameter_order = ['level', 'biome', 'wall_probability', 'ca_iterations', 'tree_density', 'tree_count', 'enemy_density', 'maze_openings']
+        # Dynamic parameter order will be updated based on current template
+        self.parameter_order = ['level', 'seed', 'generation', 'template']
+        self._update_parameter_order()
         
         # Initialize systems for preview mode
         self.render_system = RenderSystem(self.world, self.camera, self.message_log, 
@@ -82,19 +86,19 @@ class MapPreviewTool:
         text_formatter = TextFormatter(self.render_system.term)
         self.render_system.status_display = MapGenStatusDisplay(self.world, self, text_formatter)
         
-        # Override the menu manager's get_menu_line method to handle our biome menu
+        # Override the menu manager's get_menu_line method to handle our template menu
         original_get_menu_line = self.render_system.menu_manager.get_menu_line
         def custom_get_menu_line(line_num, player_entity):
-            if self.biome_menu_active:
-                return self.biome_menu.get_menu_line(line_num, player_entity)
+            if self.template_menu_active:
+                return self.template_menu.get_menu_line(line_num, player_entity)
             return original_get_menu_line(line_num, player_entity)
         
         self.render_system.menu_manager.get_menu_line = custom_get_menu_line
         
-        # Override the menu manager's is_menu_active method to include our biome menu
+        # Override the menu manager's is_menu_active method to include our template menu
         original_is_menu_active = self.render_system.menu_manager.is_menu_active
         def custom_is_menu_active():
-            return self.biome_menu_active or original_is_menu_active()
+            return self.template_menu_active or original_is_menu_active()
         
         self.render_system.menu_manager.is_menu_active = custom_is_menu_active
         self.input_system = InputSystem(self.world, self.game_state, self.message_log, self.render_system)
@@ -274,17 +278,9 @@ class MapPreviewTool:
         self.current_level = level
     
     def _show_level_info(self) -> None:
-        """Show information about the current level."""
-        # Use effective entry that includes temporary overrides
-        entry = self._get_effective_schedule_entry(self.current_editing_level)
-        self.message_log.add_info(f"Editing Level: {self.current_editing_level}")
-        self.message_log.add_info(f"Schedule Range: {entry['from']}-{entry['to']}")
-        self.message_log.add_info(f"Biome: {entry['biome']}")
-        
-        if entry.get('overrides'):
-            self.message_log.add_info("Overrides:")
-            for key, value in entry['overrides'].items():
-                self.message_log.add_info(f"  {key}: {value}")
+        """Show minimal information about the current level."""
+        # Just show a simple message - all the important info is now in the sidebar
+        pass
     
     def run(self) -> None:
         """Main preview loop."""
@@ -338,16 +334,10 @@ class MapPreviewTool:
         elif key.lower() == 's' and not self.editing_parameter:
             self._save_schedule()
             return True
-        elif key == '<' or key == ',':
-            self._change_level(-1)
-            return True
-        elif key == '>' or key == '.':
-            self._change_level(1)
-            return True
         elif self.editing_parameter:
             # Handle parameter editing input
             return self._handle_parameter_edit_input(key)
-        elif self.biome_menu_active:
+        elif self.template_menu_active:
             # Handle biome menu input
             return self._handle_biome_menu_input(key)
         elif key_str == '8':  # Up arrow - navigate up through parameters
@@ -359,11 +349,17 @@ class MapPreviewTool:
         elif key_name == 'KEY_ENTER':  # Enter - start editing selected parameter
             self._start_parameter_edit()
             return True
+        elif key == '+' or key == '=':  # Plus - increment parameter
+            self._increment_parameter(1)
+            return True
+        elif key == '-' or key == '_':  # Minus - decrement parameter
+            self._increment_parameter(-1)
+            return True
         elif key == 'KEY_ESCAPE' or key == '\x1b':  # Escape - cancel any editing
             if self.editing_parameter:
                 self._cancel_parameter_edit()
                 return True
-            elif self.biome_menu_active:
+            elif self.template_menu_active:
                 self._cancel_biome_menu()
                 return True
         
@@ -467,17 +463,118 @@ class MapPreviewTool:
         if not self.editing_parameter:
             self.selected_parameter = (self.selected_parameter + direction) % len(self.parameter_order)
     
+    def _increment_parameter(self, direction: int) -> None:
+        """Increment/decrement the selected parameter (direction: 1 for +, -1 for -)."""
+        if self.editing_parameter or self.template_menu_active:
+            return
+        
+        param_name = self.parameter_order[self.selected_parameter]
+        
+        # Skip template parameter (use Enter to select)
+        if param_name == 'template':
+            return
+        
+        current_value = self._get_current_parameter_value(param_name)
+        param_def = self.parameter_definitions[param_name]
+        
+        # Calculate increment amount based on parameter type
+        if param_def['type'] == int:
+            increment = direction * 1  # Increment by 1 for integers
+        elif param_def['type'] == float:
+            increment = direction * 0.01  # Increment by 0.01 for floats
+        else:
+            return  # Skip string parameters
+        
+        # Calculate new value and clamp to bounds
+        new_value = current_value + increment
+        new_value = max(param_def['min'], min(param_def['max'], new_value))
+        
+        # Round float values to avoid floating point precision issues
+        if param_def['type'] == float:
+            new_value = round(new_value, 2)
+        
+        # Apply the change
+        try:
+            if param_name == 'level':
+                # Change the current editing level
+                old_level = self.current_editing_level
+                self.current_editing_level = int(new_value)
+                # Clear entities and regenerate the new level
+                self._clear_entities()
+                self._generate_current_level()
+                self._recreate_player()
+                
+                # Update parameter order for the new level's template
+                self._update_parameter_order()
+                
+                # Force FOV system to recalculate
+                self.fov_system.last_player_pos = None
+                self.fov_system.previously_visible_tiles.clear()
+                self.fov_system.update()
+                
+                # Invalidate render cache
+                self.render_system.invalidate_cache()
+                self.message_log.add_info(f"Set level to {int(new_value)}")
+            elif param_name == 'seed':
+                # Change the world generator seed by recreating the level generator
+                self._change_seed(int(new_value))
+                self.message_log.add_info(f"Set seed to {int(new_value)}")
+            elif param_name == 'generation':
+                # Change generation counter and regenerate
+                self.generation_counter = int(new_value)
+                self._regenerate_with_new_parameters()
+                self.message_log.add_info(f"Set generation to {int(new_value)}")
+            else:
+                # Update schedule parameter
+                self._update_schedule_parameter(param_name, new_value)
+                self._regenerate_with_new_parameters()
+                self.message_log.add_info(f"Set {param_name} to {new_value}")
+        except Exception as e:
+            self.message_log.add_error(f"Error updating {param_name}: {e}")
+    
+    def _change_seed(self, new_seed: int) -> None:
+        """Change the world generator seed by updating the level generator's seed."""
+        # Update the level generator's seed directly
+        self.world_generator.level_generator.seed = new_seed
+        
+        # Update the level generator's config seed
+        self.world_generator.level_generator.config.seed = new_seed
+        
+        # Update the base generator's config seed
+        self.world_generator.level_generator.base_generator.config.seed = new_seed
+        
+        # Update the world generator's internal seed
+        self.world_generator._seed = new_seed
+        
+        # Regenerate the level with the new seed
+        self._regenerate_with_new_parameters()
+    
+    def _regenerate_with_new_parameters(self) -> None:
+        """Regenerate the level with new parameters."""
+        # Clear entities and regenerate
+        self._clear_entities()
+        self._generate_current_level()
+        self._recreate_player()
+        
+        # Force FOV system to recalculate
+        self.fov_system.last_player_pos = None
+        self.fov_system.previously_visible_tiles.clear()
+        self.fov_system.update()
+        
+        # Invalidate render cache
+        self.render_system.invalidate_cache()
+    
     def _start_parameter_edit(self) -> None:
         """Start editing the selected parameter."""
-        if not self.editing_parameter and not self.biome_menu_active:
+        if not self.editing_parameter and not self.template_menu_active:
             param_name = self.parameter_order[self.selected_parameter]
             
-            if param_name == 'biome':
-                # Show biome selection menu
-                self.biome_menu_active = True
-                self.biome_menu.reset()
+            if param_name == 'template':
+                # Show template selection menu
+                self.template_menu_active = True
+                self.template_menu.reset()
                 self.message_log.clear()
-                self.message_log.add_info("Select a biome:")
+                self.message_log.add_info("Select a template:")
             else:
                 # Regular text editing for other parameters
                 current_value = self._get_current_parameter_value(param_name)
@@ -499,37 +596,40 @@ class MapPreviewTool:
         
         if key_name == 'KEY_ENTER':
             # Select the current biome
-            selected_biome = self.biome_menu.get_selected_biome()
-            if selected_biome:
-                self._apply_biome_selection(selected_biome)
+            selected_template = self.template_menu.get_selected_template()
+            if selected_template:
+                self._apply_biome_selection(selected_template)
             return True
         elif key == 'KEY_ESCAPE' or key == '\x1b':
             # Cancel biome selection
             self._cancel_biome_menu()
             return True
         elif key_str == '8':  # Up arrow
-            self.biome_menu.navigate_up()
+            self.template_menu.navigate_up()
             return True
         elif key_str == '2':  # Down arrow
-            self.biome_menu.navigate_down()
+            self.template_menu.navigate_down()
             return True
         
         return False
     
     def _cancel_biome_menu(self) -> None:
         """Cancel biome menu selection."""
-        self.biome_menu_active = False
+        self.template_menu_active = False
         self.message_log.clear()
         self._show_level_info()
         self.message_log.add_info("Biome selection cancelled")
     
-    def _apply_biome_selection(self, biome_name: str) -> None:
-        """Apply the selected biome temporarily for preview."""
+    def _apply_biome_selection(self, template_name: str) -> None:
+        """Apply the selected template temporarily for preview."""
         try:
-            # Store temporary override
-            self._set_temp_override('biome', biome_name)
+            # Store temporary override (still using 'biome' in schedule for compatibility)
+            self._set_temp_override('biome', template_name)
             
-            # Regenerate level with new biome immediately
+            # Update parameter order for the new template
+            self._update_parameter_order()
+            
+            # Regenerate level with new template immediately
             self._clear_entities()
             self._generate_current_level()
             self._recreate_player()
@@ -541,14 +641,14 @@ class MapPreviewTool:
             
             self.render_system.invalidate_cache()
             
-            # Exit biome menu
-            self.biome_menu_active = False
+            # Exit template menu
+            self.template_menu_active = False
             self.message_log.clear()
             self._show_level_info()
-            self.message_log.add_info(f"Set biome to {biome_name} (preview)")
+            self.message_log.add_info(f"Set template to {template_name} (preview)")
             
         except Exception as e:
-            self.message_log.add_error(f"Error applying biome: {e}")
+            self.message_log.add_error(f"Error applying template: {e}")
             self._cancel_biome_menu()
     
     def _handle_parameter_edit_input(self, key) -> bool:
@@ -603,6 +703,13 @@ class MapPreviewTool:
                 # Change editing level
                 self.current_editing_level = new_value
                 self._change_level(0)  # Regenerate current level
+            elif param_name == 'seed':
+                # Change the world generator seed
+                self._change_seed(new_value)
+            elif param_name == 'generation':
+                # Change generation counter and regenerate
+                self.generation_counter = new_value
+                self._regenerate_with_new_parameters()
             else:
                 # Update schedule entry
                 self._update_schedule_parameter(param_name, new_value)
@@ -663,7 +770,11 @@ class MapPreviewTool:
     
     def _get_current_parameter_value(self, param_name: str):
         """Get the current value of a parameter."""
-        if param_name == 'level':
+        if param_name == 'seed':
+            return self.world_generator.seed
+        elif param_name == 'generation':
+            return self.generation_counter
+        elif param_name == 'level':
             return self.current_editing_level
         
         # Use effective entry that includes temporary overrides
@@ -671,6 +782,8 @@ class MapPreviewTool:
         
         if param_name == 'biome':
             return entry.get('biome', 'default')
+        elif param_name == 'template':
+            return entry.get('biome', 'forest')  # Map biome to template for now
         
         # Check overrides first, then defaults
         overrides = entry.get('overrides', {})
@@ -687,6 +800,32 @@ class MapPreviewTool:
             'maze_openings': 5
         }
         return defaults.get(param_name, 0)
+    
+    def _update_parameter_order(self) -> None:
+        """Update parameter order based on current template."""
+        # Start with basic parameters in the desired order
+        self.parameter_order = ['level', 'seed', 'generation', 'template']
+        
+        # Get current template name
+        current_template_name = self._get_current_parameter_value('template')
+        
+        # Get template and its parameters
+        try:
+            from game.worldgen.templates import get_template
+            template = get_template(current_template_name)
+            if template:
+                template_params = template.get_parameters()
+                # Add template-specific parameters to the order
+                for param_name in template_params.keys():
+                    if param_name not in self.parameter_order:
+                        self.parameter_order.append(param_name)
+        except:
+            # Fallback to default parameters if template system fails
+            pass
+        
+        # Ensure selected parameter is still valid
+        if self.selected_parameter >= len(self.parameter_order):
+            self.selected_parameter = 0
     
     def _quit_preview(self) -> None:
         """Quit the preview tool."""

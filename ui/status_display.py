@@ -262,125 +262,49 @@ class MapGenStatusDisplay:
         is_selected = line_num == self.map_preview_tool.selected_parameter
         is_editing = is_selected and self.map_preview_tool.editing_parameter
         
-        if line_num == 0:
-            # Generation line (shows current layout variation)
+        # Get the parameter order from the map preview tool
+        parameter_order = self.map_preview_tool.parameter_order
+        
+        # Check if this line number corresponds to a parameter
+        if line_num < len(parameter_order):
+            param_name = parameter_order[line_num]
+            
+            # Get current value
             if is_editing:
                 value = self.map_preview_tool.edit_buffer
             else:
-                value = str(self.map_preview_tool.generation_counter)
+                raw_value = self.map_preview_tool._get_current_parameter_value(param_name)
+                # Format value based on type
+                if isinstance(raw_value, float):
+                    value = f"{raw_value:.2f}"
+                else:
+                    value = str(raw_value)
             
+            # Create display label
+            display_labels = {
+                'level': 'D',
+                'seed': 'Seed',
+                'generation': 'Generation',
+                'template': 'Template',
+                'wall_probability': 'Wall Prob',
+                'ca_iterations': 'CA Iter',
+                'tree_density': 'Tree Dens',
+                'tree_count': 'Tree Count',
+                'maze_openings': 'Maze Opens',
+                'enemy_density': 'Enemy Dens'
+            }
+            label = display_labels.get(param_name, param_name.title())
+            
+            # Apply colors based on selection and editing state
             if is_selected:
                 if is_editing:
-                    return self.formatter.apply_color("> Generation: ", "yellow") + self.formatter.apply_color(value + "_", "yellow")
+                    return self.formatter.apply_color(f"{label}: ", "yellow") + self.formatter.apply_color(value + "_", "yellow")
                 else:
-                    return self.formatter.apply_color("> Generation: ", "cyan") + self.formatter.apply_color(value, "white")
+                    return self.formatter.apply_color(f"{label}: ", "cyan") + self.formatter.apply_color(value, "white")
             else:
-                return self.formatter.apply_color("Generation: ", "bright_black") + self.formatter.apply_color(value, "white")
-        elif line_num == 1:
-            # Biome line
-            if is_editing:
-                value = self.map_preview_tool.edit_buffer
-            else:
-                value = self.map_preview_tool._get_current_parameter_value('biome')
-            
-            if is_selected:
-                if is_editing:
-                    return self.formatter.apply_color("> Biome: ", "yellow") + self.formatter.apply_color(value + "_", "yellow")
-                else:
-                    return self.formatter.apply_color("> Biome: ", "cyan") + self.formatter.apply_color(value, "white")
-            else:
-                return self.formatter.apply_color("Biome: ", "bright_black") + self.formatter.apply_color(value, "white")
-        elif line_num == 2:
-            # Wall Probability
-            if is_editing:
-                value = self.map_preview_tool.edit_buffer
-            else:
-                value = f"{self.map_preview_tool._get_current_parameter_value('wall_probability'):.2f}"
-            
-            if is_selected:
-                if is_editing:
-                    return self.formatter.apply_color("> Wall Prob: ", "yellow") + self.formatter.apply_color(value + "_", "yellow")
-                else:
-                    return self.formatter.apply_color("> Wall Prob: ", "cyan") + self.formatter.apply_color(value, "white")
-            else:
-                return self.formatter.apply_color("Wall Prob: ", "bright_black") + self.formatter.apply_color(value, "white")
-        elif line_num == 3:
-            # CA Iterations
-            if is_editing:
-                value = self.map_preview_tool.edit_buffer
-            else:
-                value = str(self.map_preview_tool._get_current_parameter_value('ca_iterations'))
-            
-            if is_selected:
-                if is_editing:
-                    return self.formatter.apply_color("> CA Iter: ", "yellow") + self.formatter.apply_color(value + "_", "yellow")
-                else:
-                    return self.formatter.apply_color("> CA Iter: ", "cyan") + self.formatter.apply_color(value, "white")
-            else:
-                return self.formatter.apply_color("CA Iter: ", "bright_black") + self.formatter.apply_color(value, "white")
-        elif line_num == 4:
-            # Tree Density
-            if is_editing:
-                value = self.map_preview_tool.edit_buffer
-            else:
-                value = f"{self.map_preview_tool._get_current_parameter_value('tree_density'):.2f}"
-            
-            if is_selected:
-                if is_editing:
-                    return self.formatter.apply_color("> Tree Dens: ", "yellow") + self.formatter.apply_color(value + "_", "yellow")
-                else:
-                    return self.formatter.apply_color("> Tree Dens: ", "cyan") + self.formatter.apply_color(value, "white")
-            else:
-                return self.formatter.apply_color("Tree Dens: ", "bright_black") + self.formatter.apply_color(value, "white")
-        elif line_num == 5:
-            # Tree Count
-            if is_editing:
-                value = self.map_preview_tool.edit_buffer
-            else:
-                value = str(self.map_preview_tool._get_current_parameter_value('tree_count'))
-            
-            if is_selected:
-                if is_editing:
-                    return self.formatter.apply_color("> Tree Count: ", "yellow") + self.formatter.apply_color(value + "_", "yellow")
-                else:
-                    return self.formatter.apply_color("> Tree Count: ", "cyan") + self.formatter.apply_color(value, "white")
-            else:
-                return self.formatter.apply_color("Tree Count: ", "bright_black") + self.formatter.apply_color(value, "white")
-        elif line_num == 6:
-            # Border Walls (if present) - not editable, so no highlighting
-            from game.worldgen.biomes import get_biome
-            biome = get_biome(self.map_preview_tool._get_current_parameter_value('biome'))
-            if biome and biome.layers:
-                # Look for BorderWallLayer
-                for layer in biome.layers:
-                    if hasattr(layer, 'border_rows'):
-                        border_rows = layer.border_rows
-                        border_str = ",".join(map(str, border_rows))
-                        return self.formatter.apply_color("Borders: ", "bright_black") + self.formatter.apply_color(border_str, "white")
-            return self.formatter.apply_color("Borders: ", "bright_black") + self.formatter.apply_color("none", "white")
-        elif line_num == 7:
-            # Layer Count - not editable, so no highlighting
-            from game.worldgen.biomes import get_biome
-            biome = get_biome(self.map_preview_tool._get_current_parameter_value('biome'))
-            if biome:
-                layer_count = len(biome.layers)
-                return self.formatter.apply_color("Layers: ", "bright_black") + self.formatter.apply_color(str(layer_count), "white")
-            return self.formatter.apply_color("Layers: ", "bright_black") + self.formatter.apply_color("--", "white")
-        elif line_num == 8:
-            # Map Size - not editable, so no highlighting
-            if self.map_preview_tool.current_level:
-                width = self.map_preview_tool.current_level.width
-                height = self.map_preview_tool.current_level.height
-                return self.formatter.apply_color("Size: ", "bright_black") + self.formatter.apply_color(f"{width}x{height}", "white")
-            return self.formatter.apply_color("Size: ", "bright_black") + self.formatter.apply_color("--x--", "white")
-        elif line_num == 9:
-            # Controls hint
-            if self.map_preview_tool.editing_parameter:
-                return self.formatter.apply_color("Enter: Apply, Esc: Cancel", "bright_black")
-            else:
-                return self.formatter.apply_color("↑↓: Navigate, Enter: Edit", "bright_black")
+                return self.formatter.apply_color(f"{label}: ", "bright_black") + self.formatter.apply_color(value, "white")
         else:
-            # Empty lines
+            # Empty lines for parameters beyond the current template's parameters
             return ""
     
     def get_status_line(self) -> str:

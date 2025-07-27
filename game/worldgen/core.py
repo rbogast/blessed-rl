@@ -144,8 +144,8 @@ class WorldGenerator:
             parameters = self.scheduler.params_at(chunk_id * self.config.chunk_width)
         else:
             # Fallback to simple generation
-            from .biomes import get_biome
-            biome = get_biome('default')
+            from .templates import get_template
+            biome = get_template('forest')  # Use forest as default
             parameters = {}
         
         # Create generation context

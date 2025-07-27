@@ -73,8 +73,8 @@ class LevelGenerator:
             parameters = self.scheduler.params_at(level_id)
         else:
             # Fallback to simple generation
-            from game.worldgen.biomes import get_biome
-            biome = get_biome('default')
+            from game.worldgen.templates import get_template
+            biome = get_template('forest')  # Use forest as default instead of 'default'
             parameters = {}
         
         # Create generation context with turn-based seed

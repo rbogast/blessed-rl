@@ -10,6 +10,6 @@ This package provides a plugin-based world generation system that supports:
 
 from .core import Tile, Chunk
 from .scheduler import WorldScheduler
-from .biomes import BiomeRegistry
+# Removed old biome registry - now using template system
 
-__all__ = ['Tile', 'Chunk', 'WorldScheduler', 'BiomeRegistry']
+__all__ = ['Tile', 'Chunk', 'WorldScheduler']
