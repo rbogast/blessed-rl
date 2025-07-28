@@ -3,12 +3,17 @@
 
 - from: 0
   to: 1
-  biome: forest
+  biome: rogue
   overrides:
     wall_probability: 0.2
     enemy_density: 0.4
     ca_iterations: 3
     tree_density: 0.1
+    min_rooms: 4
+    max_rooms: 6
+    min_room_size: 3
+    max_room_size: 9
+    extra_connections: 2
 
 - from: 1
   to: 4

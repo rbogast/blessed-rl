@@ -8,6 +8,7 @@ from .connectivity import ConnectivityLayer
 from .borders import BorderWallLayer
 from .trees import TreeScatterLayer, SparseTreeLayer
 from .maze_layers import RecursiveBacktrackingLayer, MazeInterconnectionLayer, MazeBorderLayer
+from .rogue_layers import RogueRoomLayer, RogueCorridorLayer, RogueDoorLayer
 
 __all__ = [
     'NoiseLayer',
@@ -18,5 +19,8 @@ __all__ = [
     'SparseTreeLayer',
     'RecursiveBacktrackingLayer',
     'MazeInterconnectionLayer',
-    'MazeBorderLayer'
+    'MazeBorderLayer',
+    'RogueRoomLayer',
+    'RogueCorridorLayer',
+    'RogueDoorLayer'
 ]

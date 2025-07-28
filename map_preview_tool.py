@@ -60,6 +60,7 @@ class MapPreviewTool:
         from systems.menus.template_menu import TemplateSelectionMenu
         self.template_menu = TemplateSelectionMenu(self.world, available_templates)
         
+        # Base parameter definitions
         self.parameter_definitions = {
             'seed': {'type': int, 'min': 0, 'max': 1000000},
             'generation': {'type': int, 'min': 0, 'max': 1000},
@@ -72,9 +73,39 @@ class MapPreviewTool:
             'enemy_density': {'type': float, 'min': 0.0, 'max': 2.0},
             'maze_openings': {'type': int, 'min': 0, 'max': 50}
         }
+        
+        # Add template-specific parameters dynamically
+        self._load_template_parameters()
         # Dynamic parameter order will be updated based on current template
         self.parameter_order = ['level', 'seed', 'generation', 'template']
         self._update_parameter_order()
+    
+    def _load_template_parameters(self) -> None:
+        """Load parameter definitions from all available templates."""
+        try:
+            from game.worldgen.templates import list_templates, get_template
+            
+            for template_name in list_templates():
+                try:
+                    template = get_template(template_name)
+                    if template:
+                        template_params = template.get_parameters()
+                        
+                        # Add each template parameter to our definitions
+                        for param_name, param_def in template_params.items():
+                            if param_name not in self.parameter_definitions:
+                                # Convert ParameterDef to our format
+                                self.parameter_definitions[param_name] = {
+                                    'type': param_def.param_type,
+                                    'min': param_def.min_value,
+                                    'max': param_def.max_value
+                                }
+                except Exception as e:
+                    # Skip templates that fail to load
+                    continue
+        except Exception as e:
+            # Fallback if template system fails
+            pass
         
         # Initialize systems for preview mode
         self.render_system = RenderSystem(self.world, self.camera, self.message_log, 

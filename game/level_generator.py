@@ -36,6 +36,7 @@ from components.effects import Physics
 from components.ai import AI, AIType
 from components.corpse import Race
 from game.character_stats import calculate_max_hp
+from game.tile_entity_converter import TileEntityConverter
 
 
 class LevelGenerator:
@@ -111,6 +112,10 @@ class LevelGenerator:
             
             # Add stairs using standard placement
             self._place_stairs(level, level_id, stairs_up_pos, level_rng)
+        
+        # Convert special tiles to entities (doors, chests, etc.)
+        tile_converter = TileEntityConverter(self.world)
+        tile_converter.convert_level_tiles(level)
         
         # Spawn creatures
         if self.scheduler:

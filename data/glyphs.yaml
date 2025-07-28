@@ -10,6 +10,14 @@ terrain:
     char: "▒"
     visible_color: "yellow"
     explored_color: "blue"
+  door_closed:
+    char: "+"
+    visible_color: "brown"
+    explored_color: "blue"
+  door_open:
+    char: "/"
+    visible_color: "brown"
+    explored_color: "blue"
   stairs_down:
     char: ">"
     visible_color: "white"
