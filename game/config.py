@@ -31,7 +31,7 @@ class GameConfig:
     # Dungeon level configuration
     LEVEL_WIDTH = MAP_WIDTH     # Width of each dungeon level - match viewport width
     LEVEL_HEIGHT = MAP_HEIGHT   # Height of each dungeon level - match viewport height
-    PERSISTENT_LEVELS = False    # If True, keep levels in memory; if False, regenerate when revisited
+    PERSISTENT_LEVELS = False    # If True, keep levels in memory; if False, delete levels unless they have persistence artifacts
     
     # Chunk configuration (legacy - now used for level generation)
     CHUNK_WIDTH = LEVEL_WIDTH

@@ -112,10 +112,10 @@ class GameStateManager:
         """Get the current dungeon level."""
         return self.dungeon_manager.get_current_level()
     
-    def change_level(self, new_level_id: int) -> None:
+    def change_level(self, new_level_id: int, world=None) -> None:
         """Change to a new dungeon level."""
         old_level_id = self.dungeon_manager.current_level_id
-        self.dungeon_manager.change_level(new_level_id, old_level_id)
+        self.dungeon_manager.change_level(new_level_id, old_level_id, world)
     
     def has_level(self, level_id: int) -> bool:
         """Check if a level exists in memory."""

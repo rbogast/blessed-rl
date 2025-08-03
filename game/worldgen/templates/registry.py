@@ -8,6 +8,7 @@ from .forest import ForestTemplate
 from .maze import MazeTemplate
 from .graveyard import GraveyardTemplate
 from .rogue import RogueTemplate
+from .rooms import RoomsTemplate
 
 
 class TemplateRegistry:
@@ -53,6 +54,7 @@ class TemplateRegistry:
         self.register(MazeTemplate())
         self.register(GraveyardTemplate())
         self.register(RogueTemplate())
+        self.register(RoomsTemplate())
 
 
 # Global registry instance

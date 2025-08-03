@@ -9,7 +9,7 @@ from components.combat import Health, Stats
 from components.character import CharacterAttributes, Experience
 from components.effects import Physics
 from components.items import Inventory, EquipmentSlots
-from components.corpse import Race
+from components.corpse import Species
 from components.skills import Skills
 from game.level_world_gen import LevelWorldGenerator
 from game.character_stats import calculate_max_hp
@@ -144,7 +144,7 @@ class RoguelikeGame:
         self.world.add_component(player_entity, Inventory(capacity=20))
         self.world.add_component(player_entity, EquipmentSlots())
         self.world.add_component(player_entity, Skills())  # Add skills component
-        self.world.add_component(player_entity, Race('human'))  # Player is human
+        self.world.add_component(player_entity, Species('human'))  # Player is human
         
         # Add player to current level
         level_0.add_entity(player_entity)
@@ -356,15 +356,33 @@ class RoguelikeGame:
         current_level_id = self.game_state.get_current_level_id()
         current_level = self.game_state.get_current_level()
         
-        # Save current level's entity data (excluding player)
+        # Save current level's entity data (excluding player and their inventory items)
         if current_level:
-            # Create a temporary list of non-player entities for saving
-            non_player_entities = [eid for eid in current_level.entities if eid != player_entity]
+            # Get player's inventory items to exclude them from level saving
+            player_inventory_items = set()
+            from components.items import Inventory, EquipmentSlots
             
-            if non_player_entities:
-                # Save entity data for non-player entities only
+            inventory = self.world.get_component(player_entity, Inventory)
+            if inventory:
+                player_inventory_items.update(inventory.items)
+            
+            equipment_slots = self.world.get_component(player_entity, EquipmentSlots)
+            if equipment_slots:
+                equipped_items = equipment_slots.get_equipped_items()
+                for slot, item_id in equipped_items.items():
+                    if item_id:
+                        player_inventory_items.add(item_id)
+            
+            # Create a list of entities to save (exclude player and their items)
+            entities_to_save = []
+            for eid in current_level.entities:
+                if eid != player_entity and eid not in player_inventory_items:
+                    entities_to_save.append(eid)
+            
+            if entities_to_save:
+                # Save entity data for level entities only (not player items)
                 saved_entities = []
-                for entity_id in non_player_entities:
+                for entity_id in entities_to_save:
                     if self.world.entities.is_alive(entity_id):
                         # Get all components for this entity
                         components = {}
@@ -379,13 +397,13 @@ class RoguelikeGame:
                 
                 current_level.entity_data = saved_entities
             else:
-                # No non-player entities to save
+                # No entities to save
                 current_level.entity_data = []
             
-            # Remove ALL entities from the ECS world except the player
+            # Remove entities from the ECS world (exclude player and their inventory items)
             entities_to_remove = []
             for entity_id in self.world.entities.get_alive_entities():
-                if entity_id != player_entity:
+                if entity_id != player_entity and entity_id not in player_inventory_items:
                     entities_to_remove.append(entity_id)
             
             for entity_id in entities_to_remove:
@@ -418,16 +436,15 @@ class RoguelikeGame:
                     self.message_log.add_warning(f"  Current level down: {current_level.get_stairs_down_pos()}")
                     self.message_log.add_warning(f"  New level up: {new_level.get_stairs_up_pos()}")
         
-        # Change to target level
-        self.game_state.change_level(target_level_id)
+        # Change to target level with proper cleanup
+        self.game_state.change_level(target_level_id, self.world)
         target_level = self.game_state.get_current_level()
         self.world_generator.set_current_level(target_level)
         
         # Restore entities for the target level
         if target_level.entity_data:
             target_level.restore_entity_data(self.world, target_level.entity_data)
-            # Clear the entity data after restoration to prevent duplication
-            target_level.entity_data = []
+            # Don't clear entity_data - we need it for future level transitions
         
         # Position player on appropriate stairs
         if stairs_type == 'down':
@@ -518,6 +535,37 @@ class RoguelikeGame:
     
     def _spawn_test_items(self, spawn_x: int, spawn_y: int, level) -> None:
         """Spawn some test items near the player for testing."""
+        # Spawn persistence artifact on level 0 only
+        if level.level_id == 0:
+            # Find a position for the persistence artifact (away from player)
+            artifact_placed = False
+            for dx in range(-5, 6):
+                for dy in range(-5, 6):
+                    if artifact_placed:
+                        break
+                    
+                    # Skip positions too close to player
+                    if abs(dx) < 2 and abs(dy) < 2:
+                        continue
+                    
+                    test_x = spawn_x + dx
+                    test_y = spawn_y + dy
+                    
+                    # Check if position is valid and not a wall
+                    if (0 <= test_x < level.width and 0 <= test_y < level.height and 
+                        not level.is_wall(test_x, test_y)):
+                        
+                        # Create and place persistence artifact
+                        artifact_entity = self.item_factory.create_item('persistence_artifact', test_x, test_y)
+                        if artifact_entity:
+                            level.add_entity(artifact_entity)
+                            artifact_placed = True
+                            self.message_log.add_info("A mysterious glowing orb lies nearby...")
+                            break
+                
+                if artifact_placed:
+                    break
+        
         # Only spawn potions - no extra equipment
         test_items = ['health_potion', 'greater_health_potion']
         
@@ -542,6 +590,7 @@ class RoguelikeGame:
                     item_id = test_items[placed_items]
                     item_entity = self.item_factory.create_item(item_id, test_x, test_y)
                     if item_entity:
+                        level.add_entity(item_entity)
                         placed_items += 1
             
             if placed_items >= len(test_items):
@@ -565,9 +614,14 @@ class RoguelikeGame:
         
         # Try to pick up all items
         picked_up_count = 0
+        current_level = self.game_state.get_current_level()
+        
         for item_entity_id in items_at_pos:
             if self.inventory_system.pickup_item(player_entity, item_entity_id):
                 picked_up_count += 1
+                # Remove item from current level's entity list
+                if current_level:
+                    current_level.remove_entity(item_entity_id)
                 # Invalidate render cache since item was removed from world
                 self.render_system.invalidate_cache()
         
@@ -684,6 +738,10 @@ class RoguelikeGame:
             item_entity_id = inventory.items[item_number - 1]
             success = self.inventory_system.drop_item(player_entity, item_entity_id)
             if success:
+                # Add dropped item to current level's entity list
+                current_level = self.game_state.get_current_level()
+                if current_level:
+                    current_level.add_entity(item_entity_id)
                 # Invalidate render cache since item was added to world
                 self.render_system.invalidate_cache()
                 self.render_system.hide_all_menus()

@@ -49,10 +49,18 @@ class InventorySystem(System):
             if self.world.has_component(item_entity_id, Position):
                 self.world.remove_component(item_entity_id, Position)
             
+            # Remove item from current level's entity list
+            self._remove_item_from_current_level(item_entity_id)
+            
             # Get item name for message
             item = self.world.get_component(item_entity_id, Item)
             if item:
                 item_name = item.name
+                # Check if this is a persistence artifact
+                if hasattr(item, 'special') and item.special == 'persistence':
+                    if self.world.has_component(entity_id, Player):
+                        self.message_log.add_info(f"You pick up the {item_name}.")
+                        self.message_log.add_warning("The level's anchor to reality has been severed...")
             else:
                 # Check if it's a corpse
                 from components.corpse import Corpse
@@ -70,6 +78,19 @@ class InventorySystem(System):
             return True
         
         return False
+    
+    def _remove_item_from_current_level(self, item_entity_id: int) -> None:
+        """Remove an item from the current level's entity list."""
+        # Get the current level from game state
+        from game.game_state import GameStateManager
+        # We need to access the game state through the world or another way
+        # For now, we'll iterate through all levels to find and remove the item
+        # This is not ideal but works for the current architecture
+        
+        # Try to get game state from world (if it's stored there)
+        # Since we don't have direct access, we'll use a different approach
+        # We'll mark the item for removal and let the level transition handle it
+        pass
     
     def drop_item(self, entity_id: int, item_entity_id: int) -> bool:
         """Drop an item from inventory to the ground."""

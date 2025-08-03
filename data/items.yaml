@@ -154,6 +154,15 @@ items:
       damage_modifier: 0.6
   
   # Misc items
+  persistence_artifact:
+    name: "Persistence Artifact"
+    description: "A mysterious glowing orb that seems to anchor this place in reality"
+    type: "misc"
+    value: 1000
+    char: "*"
+    color: "bright_magenta"
+    special: "persistence"
+  
   gold_coin:
     name: "Gold Coin"
     description: "A shiny gold coin"

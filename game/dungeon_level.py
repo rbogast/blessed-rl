@@ -28,7 +28,7 @@ class DungeonLevel:
             for y in range(self.height):
                 row = []
                 for x in range(self.width):
-                    row.append(Tile(x, y))
+                    row.append(Tile(x, y, is_wall=True))  # Start with walls for maze generation
                 self.tiles.append(row)
     
     def get_tile(self, x: int, y: int) -> Optional[Tile]:
@@ -138,11 +138,11 @@ class DungeonLevel:
     def restore_entity_data(self, world, entity_data: List[Dict[str, Any]]) -> None:
         """Restore entity data for this level with fresh entity IDs."""
         # Import component classes
-        from components.core import Position, Renderable, Player, Blocking, Visible
+        from components.core import Position, Renderable, Player, Blocking, Visible, Door
         from components.combat import Health, Stats
-        from components.character import CharacterAttributes, Experience
+        from components.character import CharacterAttributes, Experience, XPValue
         from components.effects import Physics
-        from components.items import Inventory, EquipmentSlots, Item, Equipment, Consumable
+        from components.items import Inventory, EquipmentSlots, Item, Equipment, Consumable, Pickupable, Throwable
         from components.corpse import Race, Corpse
         from components.skills import Skills
         from components.ai import AI
@@ -155,16 +155,20 @@ class DungeonLevel:
             'Player': Player,
             'Blocking': Blocking,
             'Visible': Visible,
+            'Door': Door,
             'Health': Health,
             'Stats': Stats,
             'CharacterAttributes': CharacterAttributes,
             'Experience': Experience,
+            'XPValue': XPValue,
             'Physics': Physics,
             'Inventory': Inventory,
             'EquipmentSlots': EquipmentSlots,
             'Item': Item,
             'Equipment': Equipment,
             'Consumable': Consumable,
+            'Pickupable': Pickupable,
+            'Throwable': Throwable,
             'Race': Race,
             'Corpse': Corpse,
             'Skills': Skills,
@@ -235,10 +239,48 @@ class DungeonLevel:
     
     def _find_and_map_item_entity(self, old_item_id: int, entity_id_mapping: Dict[int, int], all_entity_data: List[Dict[str, Any]]) -> Optional[int]:
         """Find an item entity in the saved data and return its new mapped ID."""
-        # Since we're not preserving original entity IDs, we need to find items by their properties
-        # For now, we'll clear item references to avoid errors - this is a limitation of the current approach
-        # A more sophisticated solution would require preserving some form of item identification
+        # Find the item in the saved entity data by matching its properties
+        for i, entity_components in enumerate(all_entity_data):
+            if 'Item' in entity_components:
+                # This is an item entity, check if it matches what we're looking for
+                # We'll use the index in the entity_data list to map to the new entity ID
+                if i in entity_id_mapping:
+                    return entity_id_mapping[i]
+        
+        # If we can't find a mapping, return None (item will be lost)
         return None
+    
+    def has_persistence_artifact(self, world) -> bool:
+        """Check if this level contains a persistence artifact."""
+        from components.items import Item
+        
+        # Check live entities first
+        for entity_id in self.entities:
+            if world.entities.is_alive(entity_id):
+                item = world.get_component(entity_id, Item)
+                if item and hasattr(item, 'special') and item.special == 'persistence':
+                    return True
+        
+        # Check saved entity data for persistence artifacts
+        for entity_components in self.entity_data:
+            if 'Item' in entity_components:
+                item_data = entity_components['Item']
+                if item_data.get('special') == 'persistence':
+                    return True
+        
+        return False
+    
+    def find_persistence_artifacts(self, world) -> List[int]:
+        """Find all persistence artifact entities on this level."""
+        from components.items import Item
+        
+        artifacts = []
+        for entity_id in self.entities:
+            if world.entities.is_alive(entity_id):
+                item = world.get_component(entity_id, Item)
+                if item and hasattr(item, 'special') and item.special == 'persistence':
+                    artifacts.append(entity_id)
+        return artifacts
 
 
 class DungeonManager:
@@ -274,13 +316,27 @@ class DungeonManager:
         """Set the current level ID."""
         self.current_level_id = level_id
     
-    def change_level(self, new_level_id: int, old_level_id: Optional[int] = None) -> None:
+    def change_level(self, new_level_id: int, old_level_id: Optional[int] = None, world=None) -> None:
         """Change to a new level, optionally cleaning up the old level."""
-        if old_level_id is not None and not self.persistent_levels:
-            # Remove old level from memory if not persistent
-            self.remove_level(old_level_id)
+        if old_level_id is not None and not self.persistent_levels and world is not None:
+            # Check if old level has persistence artifact before removing
+            old_level = self.get_level(old_level_id)
+            if old_level and not old_level.has_persistence_artifact(world):
+                # Remove old level from memory if not persistent and no artifact
+                self.remove_level(old_level_id)
         
         self.current_level_id = new_level_id
+    
+    def should_persist_level(self, level_id: int, world) -> bool:
+        """Check if a level should be persisted based on artifacts."""
+        if self.persistent_levels:
+            return True
+        
+        level = self.get_level(level_id)
+        if level:
+            return level.has_persistence_artifact(world)
+        
+        return False
     
     def cleanup_distant_levels(self, current_level_id: int, keep_range: int = 2) -> None:
         """Remove levels that are far from the current level (for memory management)."""

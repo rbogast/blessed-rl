@@ -45,7 +45,8 @@ class ItemFactory:
             name=definition.get('name', item_id),
             description=definition.get('description', ''),
             item_type=definition.get('type', 'misc'),
-            value=definition.get('value', 0)
+            value=definition.get('value', 0),
+            special=definition.get('special', None)
         )
         self.world.add_component(entity_id, item_component)
         

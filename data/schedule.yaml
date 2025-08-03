@@ -2,30 +2,33 @@
 # This file defines biome segments and their parameters by level
 
 - from: 0
-  to: 1
-  biome: rogue
+  to: 0
+  biome: forest
   overrides:
-    wall_probability: 0.2
     enemy_density: 0.4
-    ca_iterations: 3
-    tree_density: 0.1
-    min_rooms: 4
-    max_rooms: 6
+    num_rooms: 7
     min_room_size: 3
-    max_room_size: 9
-    extra_connections: 2
+    max_room_size: 5
+    maze_openings: 2
+    ca_iterations: 3
+    wall_probability: 0.03
+    tree_density: 0.12
+    tree_count: 14
 
 - from: 1
   to: 4
-  biome: dungeon
+  biome: rooms
   overrides:
     wall_probability: 0.45
     enemy_density: 0.8
     ca_iterations: 5
+    num_rooms: 15
 
 - from: 5
   to: 10
-  biome: Maze
+  biome: rogue
   overrides:
     enemy_density: 0.3
+    num_rooms: 0
     maze_openings: 20
+    extra_connections: 2

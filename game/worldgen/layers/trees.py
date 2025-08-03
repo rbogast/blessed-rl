@@ -95,7 +95,7 @@ class SparseTreeLayer(GenLayer):
         width = len(tiles[0]) if height > 0 else 0
         
         # Get parameters from context
-        tree_count = ctx.get_param('tree_count', self.count)
+        tree_count = int(ctx.get_param('tree_count', self.count))
         tree_type = ctx.get_param('sparse_tree_type', self.tree_type)
         
         # Find all available floor positions

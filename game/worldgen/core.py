@@ -11,7 +11,7 @@ from components.combat import Health, Stats
 from components.character import CharacterAttributes, Experience, XPValue
 from components.effects import Physics
 from components.ai import AI, AIType
-from components.corpse import Race
+from components.corpse import Species, Disposition, DispositionType
 from game.character_stats import calculate_max_hp
 
 
@@ -261,9 +261,19 @@ class WorldGenerator:
         self.world.add_component(entity_id, Blocking())
         self.world.add_component(entity_id, Visible())
         
-        # Add Race component - use the race from spawn_info
-        race_name = spawn_info.get('race', 'unknown')
-        self.world.add_component(entity_id, Race(race_name))
+        # Add Species component - use the species from spawn_info
+        species_name = spawn_info.get('species', 'unknown')
+        self.world.add_component(entity_id, Species(species_name))
+        
+        # Add Disposition component - use the disposition from spawn_info
+        disposition_str = spawn_info.get('disposition', 'neutral')
+        if disposition_str == 'hostile':
+            disposition = DispositionType.HOSTILE
+        elif disposition_str == 'friendly':
+            disposition = DispositionType.FRIENDLY
+        else:
+            disposition = DispositionType.NEUTRAL
+        self.world.add_component(entity_id, Disposition(disposition))
         
         chunk.entities.append(entity_id)
     

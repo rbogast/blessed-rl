@@ -147,17 +147,8 @@ class PhysicsSystem:
     
     def _get_entity_name(self, entity_id: int) -> str:
         """Get display name for an entity."""
-        from components.core import Player
-        from components.ai import AI
-        
-        if self.world.has_component(entity_id, Player):
-            return "player"
-        
-        ai = self.world.get_component(entity_id, AI)
-        if ai:
-            return ai.ai_type.value
-        
-        return "entity"
+        from utils.entity_naming import get_entity_name
+        return get_entity_name(self.world, entity_id)
 
 
 class KnockbackEffect(Effect):

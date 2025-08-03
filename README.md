@@ -95,9 +95,9 @@ The codebase is organized into clear modules:
 - `utils/`: Utility functions (line drawing, etc.)
 - `data/`: Game data files (items, enemies, schedules, prefabs)
 
-## Enemy Types
+## Character Types
 
-Each enemy has unique stats and AI behavior patterns defined in `data/enemies.json`.
+Each character type (enemies, NPCs) has unique stats, species, disposition, and AI behavior patterns defined in `data/characters.json`.
 
 ## Effects
 

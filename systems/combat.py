@@ -7,7 +7,7 @@ from components.core import Position, Player, Renderable
 from components.combat import Health
 from components.character import CharacterAttributes, Experience, XPValue
 from components.ai import AI
-from components.corpse import Corpse, Race
+from components.corpse import Corpse, Species, Disposition, DispositionType
 from components.effects import Physics
 from components.items import Pickupable
 from game.game_state import GameStateManager
@@ -149,20 +149,8 @@ class CombatSystem(System):
     
     def _get_entity_name(self, entity_id: int) -> str:
         """Get a display name for an entity."""
-        if self.world.has_component(entity_id, Player):
-            return "player"
-        
-        # For enemies, use their race name from the Race component
-        race = self.world.get_component(entity_id, Race)
-        if race:
-            return race.race_name
-        
-        # Fallback to AI type if no race component
-        ai = self.world.get_component(entity_id, AI)
-        if ai:
-            return ai.ai_type.value
-        
-        return "entity"
+        from utils.entity_naming import get_entity_name
+        return get_entity_name(self.world, entity_id)
     
     def _handle_death(self, attacker_id: int, target_id: int) -> int:
         """Handle entity death and XP gain. Returns corpse entity ID if created."""
@@ -170,10 +158,10 @@ class CombatSystem(System):
         
         if self.world.has_component(target_id, Player):
             # Player died - convert to corpse but keep as player
-            race = self.world.get_component(target_id, Race)
-            if not race:
-                # Add default human race if missing
-                self.world.add_component(target_id, Race('human'))
+            species = self.world.get_component(target_id, Species)
+            if not species:
+                # Add default human species if missing
+                self.world.add_component(target_id, Species('human'))
             
             # Add corpse component to mark as dead
             self.world.add_component(target_id, Corpse('human'))
@@ -197,6 +185,12 @@ class CombatSystem(System):
             # Create corpse before destroying the entity
             corpse_id = self._create_corpse(target_id)
             
+            # Add corpse to current level if we have a world generator
+            if corpse_id and self.world_generator:
+                current_level = self.world_generator.get_current_level()
+                if current_level:
+                    current_level.add_entity(corpse_id)
+            
             # Remove the entity from the world
             self.world.destroy_entity(target_id)
             
@@ -207,15 +201,15 @@ class CombatSystem(System):
         # Get components from the original entity
         position = self.world.get_component(entity_id, Position)
         renderable = self.world.get_component(entity_id, Renderable)
-        race = self.world.get_component(entity_id, Race)
+        species = self.world.get_component(entity_id, Species)
         physics = self.world.get_component(entity_id, Physics)
         
-        if not position or not race:
-            return None  # Can't create corpse without position and race
+        if not position or not species:
+            return None  # Can't create corpse without position and species
         
         # Get corpse configuration
-        race_name = race.race_name
-        corpse_config = self.corpse_config.get(race_name, self.corpse_config.get('default', {}))
+        species_name = species.species_name
+        corpse_config = self.corpse_config.get(species_name, self.corpse_config.get('default', {}))
         
         # Determine corpse appearance
         if corpse_config.get('char') == 'inherit' and renderable:
@@ -231,8 +225,8 @@ class CombatSystem(System):
         # Add corpse components
         self.world.add_component(corpse_entity, Position(position.x, position.y))
         self.world.add_component(corpse_entity, Renderable(corpse_char, corpse_color))
-        self.world.add_component(corpse_entity, Corpse(race_name))
-        self.world.add_component(corpse_entity, Race(race_name))
+        self.world.add_component(corpse_entity, Corpse(species_name))
+        self.world.add_component(corpse_entity, Species(species_name))
         self.world.add_component(corpse_entity, Pickupable())  # Corpses can be picked up
         
         # Preserve physics (weight) if available

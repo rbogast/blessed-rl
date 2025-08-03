@@ -9,11 +9,12 @@ from typing import Dict, Optional
 class Item(Component):
     """Base component for all items."""
     
-    def __init__(self, name: str, description: str, item_type: str, value: int = 0):
+    def __init__(self, name: str, description: str, item_type: str, value: int = 0, special: str = None):
         self.name = name
         self.description = description
         self.item_type = item_type  # weapon, armor, consumable, misc
         self.value = value
+        self.special = special  # Special property for unique items like persistence artifacts
 
 
 class Equipment(Component):

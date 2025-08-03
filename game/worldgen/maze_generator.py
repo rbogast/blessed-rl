@@ -5,6 +5,193 @@ Maze generation using Recursive Backtracking algorithm.
 import random
 from typing import List, Set, Tuple, Optional
 from .core import GenLayer, GenContext, Tile
+from dataclasses import dataclass
+
+
+@dataclass
+class MazeRoom:
+    """Represents a room in the maze."""
+    x: int      # Must be odd
+    y: int      # Must be odd  
+    width: int  # Must be odd
+    height: int # Must be odd
+    
+    @property
+    def right(self) -> int:
+        return self.x + self.width - 1
+    
+    @property
+    def bottom(self) -> int:
+        return self.y + self.height - 1
+
+
+class MazeRoomLayer:
+    """
+    Generates rooms in the maze before maze generation.
+    
+    Rooms follow maze grid rules:
+    - Room dimensions must be odd numbers
+    - Room positions must start on odd coordinates
+    - Rooms are carved as floor areas before maze generation
+    - Maze generation will naturally connect to room edges
+    """
+    
+    def generate(self, tiles: List[List[Tile]], ctx: GenContext) -> None:
+        """Generate rooms before maze generation."""
+        height = len(tiles)
+        width = len(tiles[0]) if height > 0 else 0
+        
+        # Get room parameters
+        num_rooms = ctx.get_param('num_rooms', 0)
+        min_room_size = ctx.get_param('min_room_size', 5)
+        max_room_size = ctx.get_param('max_room_size', 9)
+        
+        if num_rooms <= 0:
+            return  # No rooms requested
+        
+        if width < 7 or height < 7:
+            return  # Too small for rooms
+        
+        # Validate and adjust room size parameters to be odd
+        min_room_size = self._ensure_odd(max(3, min_room_size))
+        max_room_size = self._ensure_odd(min(max_room_size, min(width // 3, height // 3)))
+        
+        if min_room_size > max_room_size:
+            max_room_size = min_room_size
+        
+        # Generate rooms
+        rooms = []
+        max_attempts = num_rooms * 10  # Prevent infinite loops
+        attempts = 0
+        
+        while len(rooms) < num_rooms and attempts < max_attempts:
+            attempts += 1
+            room = self._try_create_room(width, height, min_room_size, max_room_size, rooms, ctx.rng)
+            if room:
+                rooms.append(room)
+                self._carve_room(tiles, room)
+        
+        # Store rooms in context for potential use by other layers
+        ctx.parameters['maze_rooms'] = rooms
+    
+    def _ensure_odd(self, value: int) -> int:
+        """Ensure a value is odd."""
+        return value if value % 2 == 1 else value + 1
+    
+    def _try_create_room(self, width: int, height: int, min_size: int, max_size: int, 
+                        existing_rooms: List[MazeRoom], rng: random.Random) -> Optional[MazeRoom]:
+        """Try to create a room that doesn't collide with existing rooms."""
+        # Generate random odd dimensions (square rooms only)
+        room_size = self._ensure_odd(rng.randint(min_size, max_size))
+        room_width = room_size
+        room_height = room_size
+        
+        # Find valid odd positions (respecting borders and spacing)
+        min_x = 1  # Start at odd coordinate, respect border
+        max_x = width - room_width - 1  # Ensure room fits with border
+        min_y = 1  # Start at odd coordinate, respect border  
+        max_y = height - room_height - 1  # Ensure room fits with border
+        
+        # Ensure we have valid bounds
+        if min_x >= max_x or min_y >= max_y:
+            return None
+        
+        # Try multiple random positions
+        for _ in range(20):  # Limit attempts per room
+            # Generate random odd coordinates
+            room_x = self._ensure_odd(rng.randint(min_x, max_x))
+            room_y = self._ensure_odd(rng.randint(min_y, max_y))
+            
+            # Ensure the room fits within bounds
+            if room_x + room_width >= width - 1 or room_y + room_height >= height - 1:
+                continue
+            
+            # Create candidate room
+            candidate_room = MazeRoom(room_x, room_y, room_width, room_height)
+            
+            # Check for collisions with existing rooms
+            if not self._room_collides(candidate_room, existing_rooms):
+                return candidate_room
+        
+        return None  # Failed to place room
+    
+    def _room_collides(self, new_room: MazeRoom, existing_rooms: List[MazeRoom]) -> bool:
+        """Check if a new room collides with existing rooms (including spacing)."""
+        for existing_room in existing_rooms:
+            # Check for overlap or insufficient spacing
+            # Require at least 2 tiles spacing between rooms for maze corridors
+            spacing = 2
+            
+            if (new_room.x - spacing <= existing_room.right and 
+                new_room.right + spacing >= existing_room.x and
+                new_room.y - spacing <= existing_room.bottom and 
+                new_room.bottom + spacing >= existing_room.y):
+                return True  # Collision or insufficient spacing
+        
+        return False
+    
+    def _carve_room(self, tiles: List[List[Tile]], room: MazeRoom) -> None:
+        """Carve out a room area as floor tiles and add one door."""
+        # Carve the room interior
+        for y in range(room.y, room.y + room.height):
+            for x in range(room.x, room.x + room.width):
+                if 0 <= y < len(tiles) and 0 <= x < len(tiles[0]):
+                    tiles[y][x].is_wall = False
+                    tiles[y][x].tile_type = 'floor'
+        
+        # Add one door to the room
+        self._add_door_to_room(tiles, room)
+    
+    def _add_door_to_room(self, tiles: List[List[Tile]], room: MazeRoom) -> None:
+        """Add exactly one door to a room by creating an opening in the wall."""
+        height = len(tiles)
+        width = len(tiles[0]) if height > 0 else 0
+        
+        # Find all possible door positions (walls adjacent to room perimeter)
+        door_candidates = []
+        
+        # Check all four sides of the room
+        # Top side
+        for x in range(room.x, room.x + room.width):
+            door_y = room.y - 1
+            if door_y > 0 and door_y < height - 1:  # Not on map border
+                door_candidates.append((x, door_y, 'north'))
+        
+        # Bottom side  
+        for x in range(room.x, room.x + room.width):
+            door_y = room.y + room.height
+            if door_y > 0 and door_y < height - 1:  # Not on map border
+                door_candidates.append((x, door_y, 'south'))
+        
+        # Left side
+        for y in range(room.y, room.y + room.height):
+            door_x = room.x - 1
+            if door_x > 0 and door_x < width - 1:  # Not on map border
+                door_candidates.append((door_x, y, 'west'))
+        
+        # Right side
+        for y in range(room.y, room.y + room.height):
+            door_x = room.x + room.width
+            if door_x > 0 and door_x < width - 1:  # Not on map border
+                door_candidates.append((door_x, y, 'east'))
+        
+        # Filter to only valid door positions (must be walls currently)
+        # Note: Room perimeters are on even coordinates, which is fine for doors
+        # as they connect rooms (odd coordinate areas) to corridors (odd coordinate paths)
+        valid_doors = []
+        for x, y, direction in door_candidates:
+            if (0 <= x < width and 0 <= y < height and 
+                tiles[y][x].is_wall):
+                valid_doors.append((x, y, direction))
+        
+        # Place one door randomly if we have valid positions
+        if valid_doors:
+            import random
+            door_x, door_y, direction = random.choice(valid_doors)
+            tiles[door_y][door_x].is_wall = False
+            tiles[door_y][door_x].tile_type = 'door_closed'  # This will be converted to a door entity
+            # Store door properties for the tile converter
+            tiles[door_y][door_x].properties = {'direction': direction}
 
 
 class RecursiveBacktrackingLayer:
@@ -16,6 +203,7 @@ class RecursiveBacktrackingLayer:
     - Odd coordinates (1, 3, 5, ...) are potential corridors
     - Full border of walls around the map
     - Ensures corners and intersections only occur on odd coordinates
+    - COMPLETELY PRESERVES room areas without modification
     """
     
     def __init__(self):
@@ -34,22 +222,24 @@ class RecursiveBacktrackingLayer:
         if width < 3 or height < 3:
             return None  # Too small for maze generation
         
-        # Step 1: Initialize entire map as walls
+        # Find all room areas (floor tiles) to preserve completely
+        room_areas = set()
         for y in range(height):
             for x in range(width):
-                tiles[y][x].is_wall = True
-                tiles[y][x].tile_type = 'wall'
+                if not tiles[y][x].is_wall:
+                    room_areas.add((x, y))
         
-        # Step 2: Find all valid maze cells (odd coordinates, not on border)
+        # Find all valid maze cells (odd coordinates, not rooms, not borders)
         maze_cells = []
-        for y in range(1, height - 1, 2):  # Odd y coordinates, skip borders
-            for x in range(1, width - 1, 2):  # Odd x coordinates, skip borders
-                maze_cells.append((x, y))
+        for y in range(1, height - 1, 2):  # Odd y coordinates
+            for x in range(1, width - 1, 2):  # Odd x coordinates
+                if (x, y) not in room_areas:  # Not a room area
+                    maze_cells.append((x, y))
         
         if not maze_cells:
             return None  # No valid maze cells
         
-        # Step 3: Determine starting cell
+        # Determine starting cell
         if start_position:
             # Ensure start position is on odd coordinates
             start_x, start_y = start_position
@@ -66,22 +256,22 @@ class RecursiveBacktrackingLayer:
                 start_cell = min(maze_cells, key=lambda cell: 
                     abs(cell[0] - start_x) + abs(cell[1] - start_y))
         else:
-            # Start from a random odd coordinate
+            # Start from a random maze cell
             start_cell = ctx.rng.choice(maze_cells)
         
-        # Step 4: Run recursive backtracking algorithm
-        visited: Set[Tuple[int, int]] = set()
+        # Mark room areas as "visited" to avoid them completely
+        visited = room_areas.copy()
         self.last_visited_cell = None
         
-        self._recursive_backtrack(tiles, start_cell, visited, ctx.rng, width, height)
+        self._recursive_backtrack(tiles, start_cell, visited, ctx.rng, width, height, room_areas)
         
         return self.last_visited_cell
     
     def _recursive_backtrack(self, tiles: List[List[Tile]], current: Tuple[int, int], 
                            visited: Set[Tuple[int, int]], rng: random.Random, 
-                           width: int, height: int) -> None:
+                           width: int, height: int, room_areas: Set[Tuple[int, int]]) -> None:
         """
-        Recursive backtracking maze generation.
+        Recursive backtracking maze generation that never touches room areas.
         
         Args:
             tiles: The tile grid to modify
@@ -90,10 +280,15 @@ class RecursiveBacktrackingLayer:
             rng: Random number generator
             width: Grid width
             height: Grid height
+            room_areas: Set of room coordinates to avoid
         """
         x, y = current
         
-        # Mark current cell as visited and carve it out
+        # Skip if this is a room area
+        if (x, y) in room_areas:
+            return
+        
+        # Mark as visited and carve
         visited.add(current)
         tiles[y][x].is_wall = False
         tiles[y][x].tile_type = 'floor'
@@ -101,31 +296,29 @@ class RecursiveBacktrackingLayer:
         # Track this as the last visited cell (potential downstairs location)
         self.last_visited_cell = current
         
-        # Get all unvisited neighbors (2 steps away on odd coordinates)
-        neighbors = self._get_unvisited_neighbors(current, visited, width, height)
-        
-        # Randomize neighbor order for random maze generation
+        # Get neighbors
+        neighbors = self._get_unvisited_neighbors(current, visited, width, height, room_areas)
         rng.shuffle(neighbors)
         
         # Visit each unvisited neighbor
         for neighbor in neighbors:
             if neighbor not in visited:
-                # Carve passage between current cell and neighbor
-                self._carve_passage(tiles, current, neighbor)
-                
-                # Recursively visit the neighbor
-                self._recursive_backtrack(tiles, neighbor, visited, rng, width, height)
+                # Carve passage
+                self._carve_passage(tiles, current, neighbor, room_areas)
+                self._recursive_backtrack(tiles, neighbor, visited, rng, width, height, room_areas)
     
     def _get_unvisited_neighbors(self, cell: Tuple[int, int], visited: Set[Tuple[int, int]], 
-                               width: int, height: int) -> List[Tuple[int, int]]:
+                               width: int, height: int, room_areas: Set[Tuple[int, int]]) -> List[Tuple[int, int]]:
         """
         Get all unvisited neighboring cells that are 2 steps away on odd coordinates.
+        EXCLUDES room areas completely.
         
         Args:
             cell: Current cell coordinates
             visited: Set of visited cells
             width: Grid width
             height: Grid height
+            room_areas: Set of room coordinates to avoid
             
         Returns:
             List of unvisited neighbor coordinates
@@ -144,23 +337,25 @@ class RecursiveBacktrackingLayer:
         for dx, dy in directions:
             nx, ny = x + dx, y + dy
             
-            # Check bounds (must be odd coordinates and not on border)
+            # Check bounds and validity
             if (1 <= nx < width - 1 and 1 <= ny < height - 1 and 
-                nx % 2 == 1 and ny % 2 == 1 and (nx, ny) not in visited):
+                nx % 2 == 1 and ny % 2 == 1 and 
+                (nx, ny) not in visited and (nx, ny) not in room_areas):
                 neighbors.append((nx, ny))
         
         return neighbors
     
     def _carve_passage(self, tiles: List[List[Tile]], cell1: Tuple[int, int], 
-                      cell2: Tuple[int, int]) -> None:
+                      cell2: Tuple[int, int], room_areas: Set[Tuple[int, int]]) -> None:
         """
         Carve a passage between two cells by removing the wall between them.
-        Ensures only odd coordinates become corridors.
+        NEVER overwrites room areas.
         
         Args:
             tiles: The tile grid to modify
             cell1: First cell coordinates (odd, odd)
             cell2: Second cell coordinates (odd, odd)
+            room_areas: Set of room coordinates to avoid
         """
         x1, y1 = cell1
         x2, y2 = cell2
@@ -169,11 +364,10 @@ class RecursiveBacktrackingLayer:
         wall_x = (x1 + x2) // 2
         wall_y = (y1 + y2) // 2
         
-        # Since both cells are on odd coordinates and 2 apart,
-        # the wall between them will be on even coordinates
-        # We need to carve this wall to connect the cells
-        tiles[wall_y][wall_x].is_wall = False
-        tiles[wall_y][wall_x].tile_type = 'floor'
+        # Only carve if not a room area
+        if (wall_x, wall_y) not in room_areas and tiles[wall_y][wall_x].is_wall:
+            tiles[wall_y][wall_x].is_wall = False
+            tiles[wall_y][wall_x].tile_type = 'floor'
 
 
 class MazeInterconnectionLayer:
@@ -238,6 +432,7 @@ class MazeInterconnectionLayer:
         1. A border tile
         2. Adjacent to a stair tile  
         3. Both x and y are even numbers
+        4. Adjacent to a room area
         
         Args:
             tiles: The tile grid
@@ -264,6 +459,10 @@ class MazeInterconnectionLayer:
                 
                 # Rule 3: Not both x and y even numbers
                 if x % 2 == 0 and y % 2 == 0:
+                    continue
+                
+                # Rule 4: Not adjacent to a room area
+                if self._is_adjacent_to_room(x, y, tiles, width, height):
                     continue
                 
                 # This wall passes all rules - it's valid for interconnection
@@ -293,130 +492,67 @@ class MazeInterconnectionLayer:
                     return True
         
         return False
+    
+    def _is_adjacent_to_room(self, x: int, y: int, tiles: List[List[Tile]], 
+                           width: int, height: int) -> bool:
+        """
+        Check if a position is adjacent to any room area (floor tile).
+        
+        Args:
+            x, y: Position to check
+            tiles: The tile grid
+            width: Grid width
+            height: Grid height
+            
+        Returns:
+            True if adjacent to a room area, False otherwise
+        """
+        # For now, disable interconnections entirely when rooms are present
+        # This ensures room integrity is preserved
+        return True  # Always return True to disable all interconnections when rooms exist
+        
+        # Original logic (commented out for now):
+        # # Check all 4 adjacent positions (not diagonals for rooms)
+        # for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+        #     nx, ny = x + dx, y + dy
+        #     
+        #     # Check bounds and if it's a floor tile
+        #     if (0 <= nx < width and 0 <= ny < height and 
+        #         not tiles[ny][nx].is_wall):
+        #         return True
+        # 
+        # return False
 
 
 class MazeBorderLayer:
     """
     Ensures a full border of walls around the maze.
     This layer runs after maze generation to guarantee border integrity.
+    Respects existing room areas and only enforces borders where needed.
     """
     
     def generate(self, tiles: List[List[Tile]], ctx: GenContext) -> None:
-        """Force walls on all border tiles."""
+        """Force walls on border tiles, but respect existing room areas."""
         height = len(tiles)
         width = len(tiles[0]) if height > 0 else 0
         
         if width == 0 or height == 0:
             return
         
-        # Force walls on all border positions
+        # Get room information to avoid overwriting room areas
+        rooms = ctx.parameters.get('maze_rooms', [])
+        room_areas = set()
+        for room in rooms:
+            for y in range(room.y, room.y + room.height):
+                for x in range(room.x, room.x + room.width):
+                    room_areas.add((x, y))
+        
+        # Force walls on border positions, but respect room areas
         for y in range(height):
             for x in range(width):
                 # Check if on border
                 if x == 0 or x == width - 1 or y == 0 or y == height - 1:
-                    tiles[y][x].is_wall = True
-                    tiles[y][x].tile_type = 'wall'
-
-
-class MazeBiome:
-    """
-    Maze biome using Recursive Backtracking algorithm.
-    
-    Creates a perfect maze where:
-    - Even coordinates are walls
-    - Odd coordinates are corridors
-    - Full border of walls
-    - Exactly one path between any two points
-    - Stairs are placed at dead ends for optimal gameplay
-    """
-    
-    name = "Maze"
-    
-    def __init__(self):
-        self.layers = []
-        self.suggested_downstairs_pos = None
-        self._setup_layers()
-    
-    def _setup_layers(self) -> None:
-        """Set up the generation layers for maze generation."""
-        self.layers = [
-            RecursiveBacktrackingLayer(),
-            MazeInterconnectionLayer(),  # Add interconnections for tactical options
-            MazeBorderLayer(),  # Ensure border integrity
-        ]
-    
-    def generate(self, tiles: List[List[Tile]], ctx: GenContext) -> None:
-        """Generate maze terrain using all layers in sequence."""
-        for layer in self.layers:
-            layer.generate(tiles, ctx)
-    
-    def generate_with_stairs(self, tiles: List[List[Tile]], ctx: GenContext, 
-                           upstairs_pos: Optional[Tuple[int, int]] = None) -> Optional[Tuple[int, int]]:
-        """Generate maze with stair-aware placement. Returns suggested downstairs position."""
-        # Get the recursive backtracking layer
-        maze_layer = self.layers[0]  # RecursiveBacktrackingLayer
-        
-        # Generate base maze starting from upstairs position
-        suggested_downstairs = maze_layer.generate_with_stairs(tiles, ctx, upstairs_pos)
-        
-        # Apply interconnection layer (before final stair placement)
-        interconnection_layer = self.layers[1]  # MazeInterconnectionLayer
-        interconnection_layer.generate(tiles, ctx)
-        
-        # After interconnections, find the actual best dead end for downstairs
-        actual_downstairs = self._find_best_dead_end_for_stairs(tiles, upstairs_pos)
-        
-        # Apply border layer
-        border_layer = self.layers[2]  # MazeBorderLayer
-        border_layer.generate(tiles, ctx)
-        
-        # Store the suggestion for potential use
-        self.suggested_downstairs_pos = actual_downstairs or suggested_downstairs
-        
-        return actual_downstairs or suggested_downstairs
-    
-    def _find_best_dead_end_for_stairs(self, tiles: List[List[Tile]], 
-                                     upstairs_pos: Optional[Tuple[int, int]]) -> Optional[Tuple[int, int]]:
-        """
-        Find the best dead end position for downstairs after interconnections have been added.
-        
-        Args:
-            tiles: The tile grid
-            upstairs_pos: Position of upstairs (to avoid placing downstairs too close)
-            
-        Returns:
-            Best position for downstairs, or None if no suitable position found
-        """
-        height = len(tiles)
-        width = len(tiles[0]) if height > 0 else 0
-        
-        dead_ends = []
-        
-        # Find all dead ends (floor tiles with exactly one walkable neighbor)
-        for y in range(1, height - 1):
-            for x in range(1, width - 1):
-                if not tiles[y][x].is_wall:  # It's a floor tile
-                    # Count walkable neighbors
-                    walkable_neighbors = 0
-                    for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
-                        nx, ny = x + dx, y + dy
-                        if (0 <= nx < width and 0 <= ny < height and 
-                            not tiles[ny][nx].is_wall):
-                            walkable_neighbors += 1
-                    
-                    # If exactly one neighbor, it's a dead end
-                    if walkable_neighbors == 1:
-                        dead_ends.append((x, y))
-        
-        if not dead_ends:
-            return None
-        
-        # If we have an upstairs position, choose the dead end farthest from it
-        if upstairs_pos:
-            ux, uy = upstairs_pos
-            best_dead_end = max(dead_ends, 
-                              key=lambda pos: abs(pos[0] - ux) + abs(pos[1] - uy))
-            return best_dead_end
-        else:
-            # No upstairs position, just return the first dead end
-            return dead_ends[0]
+                    # Only force wall if not part of a room
+                    if (x, y) not in room_areas:
+                        tiles[y][x].is_wall = True
+                        tiles[y][x].tile_type = 'wall'

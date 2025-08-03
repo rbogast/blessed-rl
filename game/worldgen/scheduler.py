@@ -66,7 +66,12 @@ class Segment:
     
     def contains(self, x: int) -> bool:
         """Check if x coordinate is within this segment."""
-        return self.x0 <= x < self.x1
+        if self.x0 == self.x1:
+            # Single level segment
+            return x == self.x0
+        else:
+            # Range segment
+            return self.x0 <= x < self.x1
     
     def get_progress(self, x: int) -> float:
         """Get progress through segment [0.0, 1.0]."""
@@ -81,14 +86,14 @@ class WorldScheduler:
     def __init__(self, schedule_file: str = None):
         self.segments: List[Segment] = []
         self.biome_registry = None
-        self.enemy_data: Dict[str, Any] = {}
+        self.character_data: Dict[str, Any] = {}
         
         if schedule_file:
             self.load_schedule(schedule_file)
         else:
             self._create_default_schedule()
         
-        self._load_enemy_data()
+        self._load_character_data()
     
     def _create_default_schedule(self) -> None:
         """Create a default schedule for testing."""
@@ -157,13 +162,13 @@ class WorldScheduler:
         else:
             return ConstantCurve(0.0)
     
-    def _load_enemy_data(self) -> None:
-        """Load enemy definitions from JSON file."""
+    def _load_character_data(self) -> None:
+        """Load character definitions from JSON file."""
         try:
-            with open('data/enemies.json', 'r') as f:
-                self.enemy_data = json.load(f)
+            with open('data/characters.json', 'r') as f:
+                self.character_data = json.load(f)
         except FileNotFoundError:
-            self.enemy_data = {}
+            self.character_data = {}
     
     def set_biome_registry(self, registry) -> None:
         """Set the biome registry for biome lookup."""
@@ -196,23 +201,23 @@ class WorldScheduler:
         return get_template(biome_name)
     
     def pick_spawns(self, level_id: int, rng: random.Random) -> List[Dict[str, Any]]:
-        """Pick enemy spawns for the given level."""
+        """Pick character spawns for the given level."""
         segment = self.segment_at(level_id)
         params = self.params_at(level_id)
         
-        # Get enemy density
-        enemy_density = params.get('enemy_density', 0.3)
-        base_count = int(enemy_density * 5)  # Base spawn count
+        # Get character density (renamed from enemy_density for compatibility)
+        character_density = params.get('enemy_density', 0.3)
+        base_count = int(character_density * 5)  # Base spawn count
         spawn_count = max(0, base_count + rng.randint(-1, 2))
         
         spawns = []
-        if self.enemy_data and spawn_count > 0:
-            enemy_types = list(self.enemy_data.keys())
+        if self.character_data and spawn_count > 0:
+            character_types = list(self.character_data.keys())
             for _ in range(spawn_count):
-                enemy_type = rng.choice(enemy_types)
-                enemy_def = self.enemy_data[enemy_type].copy()
-                enemy_def['race'] = enemy_type  # Add the race name
-                spawns.append(enemy_def)
+                character_type = rng.choice(character_types)
+                character_def = self.character_data[character_type].copy()
+                # The species and disposition are already in the character data
+                spawns.append(character_def)
         
         return spawns
 

@@ -2,6 +2,8 @@
   "hound": {
     "char": "h",
     "color": "yellow",
+    "species": "hound",
+    "disposition": "hostile",
     "ai_type": "aggressive",
     "xp_value": 15,
     "weight": 80,
@@ -17,6 +19,8 @@
   "guard": {
     "char": "g",
     "color": "yellow",
+    "species": "guard",
+    "disposition": "hostile",
     "ai_type": "patrol",
     "xp_value": 25,
     "weight": 180,
@@ -32,6 +36,8 @@
   "goliath": {
     "char": "G",
     "color": "yellow",
+    "species": "goliath",
+    "disposition": "hostile",
     "ai_type": "guard",
     "xp_value": 50,
     "weight": 400,
@@ -47,6 +53,8 @@
   "cultist": {
     "char": "p",
     "color": "bright_blue",
+    "species": "cultist",
+    "disposition": "hostile",
     "ai_type": "aggressive",
     "xp_value": 30,
     "weight": 150,
