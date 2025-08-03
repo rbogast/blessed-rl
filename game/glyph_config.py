@@ -12,13 +12,15 @@ from utils.platform_detection import PlatformDetector
 class GlyphConfig:
     """Manages loading and accessing glyph configurations from YAML or JSON."""
     
-    def __init__(self, config_path: str = 'data/glyphs.yaml', character_set: str = None):
+    def __init__(self, config_path: str = 'data/glyphs.yaml', character_set: str = None, charset_override: str = None):
         self.config_path = config_path
         self.config: Dict[str, Any] = {}
         self.platform_detector = PlatformDetector()
         
-        # Determine character set to use
-        if character_set:
+        # Determine character set to use - charset_override takes precedence
+        if charset_override:
+            self.character_set = charset_override
+        elif character_set:
             self.character_set = character_set
         else:
             self.character_set = self.platform_detector.get_recommended_character_set()

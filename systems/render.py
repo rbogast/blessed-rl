@@ -26,7 +26,7 @@ class RenderSystem(System):
     """Handles all terminal rendering using blessed with fullscreen mode."""
     
     def __init__(self, world, camera: Camera, message_log: MessageLog, 
-                 world_generator: LevelWorldGenerator, game_state: GameStateManager, tile_effects_system=None):
+                 world_generator: LevelWorldGenerator, game_state: GameStateManager, tile_effects_system=None, glyph_config=None):
         super().__init__(world)
         self.camera = camera
         self.message_log = message_log
@@ -36,8 +36,8 @@ class RenderSystem(System):
         # Setup encoding for cross-platform compatibility
         self._setup_encoding()
         
-        # Initialize glyph configuration with platform detection
-        self.glyph_config = GlyphConfig()
+        # Use provided glyph configuration or create default
+        self.glyph_config = glyph_config if glyph_config else GlyphConfig()
         self.term = blessed.Terminal()
         
         # Log platform and character set information

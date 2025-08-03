@@ -32,6 +32,57 @@ Run the game:
 python3 main.py
 ```
 
+### Command-Line Options
+
+The game supports several command-line options for customization:
+
+```bash
+# Run with default settings (auto-detected character set)
+python3 main.py
+
+# Force ASCII fallback character set (recommended for Windows)
+python3 main.py -f
+python3 main.py --fallback
+
+# Specify exact character set
+python3 main.py --charset unicode    # Full Unicode characters (Linux/macOS)
+python3 main.py --charset ascii      # Basic ASCII characters (universal)
+python3 main.py --charset cp437      # Extended ASCII (Windows terminals)
+
+# Debug mode with character set information
+python3 main.py -d
+python3 main.py --debug
+
+# List available character sets
+python3 main.py --list-charsets
+
+# Combine options (debug mode with ASCII charset)
+python3 main.py -d -f
+```
+
+#### Character Sets
+
+The game automatically detects the best character set for your system, but you can override this:
+
+- **unicode**: Full Unicode characters with the best visual quality
+  - Uses: `█▓▒░` for walls, `·` for floor, `♠♣♥♦` for suits
+  - Default on Linux and macOS
+  - May not display correctly on some Windows terminals
+
+- **ascii**: Basic ASCII characters that work everywhere
+  - Uses: `#` for walls, `.` for floor, basic letters/symbols
+  - Guaranteed compatibility with all terminals and systems
+  - Recommended fallback for display issues
+
+- **cp437**: Extended ASCII (Code Page 437)
+  - Uses: `██▓▒░` for walls, `·` for floor, extended symbols
+  - Good compatibility with Windows Command Prompt and PowerShell
+
+**Note for Windows users**: If you see garbled characters like `â-'` or `Â·`, use the `-f` flag to force ASCII mode:
+```bash
+python3 main.py -f
+```
+
 ### Controls
 
 - **Numpad Movement**: Use numpad keys for 8-directional movement

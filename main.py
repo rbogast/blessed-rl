@@ -2,7 +2,9 @@
 Main entry point for the ECS Roguelike game.
 """
 
+import argparse
 import random
+import sys
 from ecs import World
 from components.core import Position, Renderable, Player, Blocking, Visible
 from components.combat import Health, Stats
@@ -38,7 +40,10 @@ from effects.tile_effects import TileEffectsSystem, BloodSplatterEffect
 class RoguelikeGame:
     """Main game class that coordinates all systems."""
     
-    def __init__(self):
+    def __init__(self, charset_override=None):
+        # Store charset override for use in initialization
+        self.charset_override = charset_override
+        
         # Initialize core ECS
         self.world = World()
         
@@ -54,6 +59,9 @@ class RoguelikeGame:
         # Initialize item factory
         self.item_factory = ItemFactory(self.world)
         
+        # Initialize glyph configuration early so it can be used by render system
+        self.glyph_config = GlyphConfig(charset_override=self.charset_override)
+        
         # Initialize effects systems
         self.effects_manager = EffectsManager(self.world)
         self.tile_effects_system = TileEffectsSystem(self.world, self.message_log)
@@ -61,7 +69,7 @@ class RoguelikeGame:
         
         # Initialize systems (render system first, then input system with render system reference)
         self.render_system = RenderSystem(self.world, self.camera, self.message_log, 
-                                        self.world_generator, self.game_state, self.tile_effects_system)
+                                        self.world_generator, self.game_state, self.tile_effects_system, self.glyph_config)
         self.input_system = InputSystem(self.world, self.game_state, self.message_log, self.render_system)
         self.movement_system = MovementSystem(self.world, self.world_generator, self.message_log)
         
@@ -118,8 +126,7 @@ class RoguelikeGame:
         spawn_x, spawn_y = self._find_spawn_position(level_0)
         
         # Get player glyph from configuration
-        glyph_config = GlyphConfig()
-        player_char, player_color = glyph_config.get_entity_glyph('player')
+        player_char, player_color = self.glyph_config.get_entity_glyph('player')
         
         # Create player attributes (boosted for testing)
         player_attributes = CharacterAttributes(
@@ -787,10 +794,104 @@ class RoguelikeGame:
         self.ai_system.update()
 
 
+def parse_arguments():
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(
+        description="Blessed Roguelike - A terminal-based dungeon crawler",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python3 main.py                    # Run with auto-detected charset
+  python3 main.py -f                 # Force ASCII fallback charset
+  python3 main.py --charset unicode  # Force Unicode charset
+  python3 main.py --charset ascii    # Force ASCII charset
+  python3 main.py --list-charsets    # List available character sets
+  python3 main.py -d -f              # Debug mode with ASCII charset
+        """
+    )
+    
+    parser.add_argument(
+        '-f', '--fallback',
+        action='store_true',
+        help='Force ASCII fallback character set (same as --charset ascii)'
+    )
+    
+    parser.add_argument(
+        '-c', '--charset',
+        choices=['unicode', 'ascii', 'cp437'],
+        help='Specify character set to use (overrides auto-detection)'
+    )
+    
+    parser.add_argument(
+        '-d', '--debug',
+        action='store_true',
+        help='Enable debug mode with charset information'
+    )
+    
+    parser.add_argument(
+        '--list-charsets',
+        action='store_true',
+        help='List available character sets and exit'
+    )
+    
+    return parser.parse_args()
+
+
+def list_available_charsets():
+    """List available character sets and their descriptions."""
+    print("Available Character Sets:")
+    print("=" * 50)
+    print("unicode  - Full Unicode characters (default on Linux/macOS)")
+    print("         - Uses: █▓▒░ for walls, · for floor, ♠♣♥♦ for suits")
+    print("         - Best visual quality but may not work on all terminals")
+    print()
+    print("ascii    - Basic ASCII characters (fallback)")
+    print("         - Uses: # for walls, . for floor, basic letters/symbols")
+    print("         - Works on all terminals and systems")
+    print()
+    print("cp437    - Extended ASCII (Code Page 437)")
+    print("         - Uses: ██▓▒░ for walls, · for floor, extended symbols")
+    print("         - Good compatibility with Windows terminals")
+    print()
+    print("The game will auto-detect the best charset for your system,")
+    print("but you can override this with the --charset option.")
+
+
 def main():
     """Entry point for the game."""
-    game = RoguelikeGame()
-    game.run()
+    args = parse_arguments()
+    
+    # Handle special commands
+    if args.list_charsets:
+        list_available_charsets()
+        return
+    
+    # Determine charset override
+    charset_override = None
+    if args.fallback:
+        charset_override = 'ascii'
+    elif args.charset:
+        charset_override = args.charset
+    
+    # Show charset information in debug mode
+    if args.debug:
+        if charset_override:
+            print(f"Debug: Using charset override: {charset_override}")
+        else:
+            print("Debug: Using auto-detected charset")
+        print("Debug: Starting game...")
+        print()
+    
+    # Create and run the game
+    try:
+        game = RoguelikeGame(charset_override=charset_override)
+        game.run()
+    except Exception as e:
+        print(f"Error starting game: {e}")
+        if args.debug:
+            import traceback
+            traceback.print_exc()
+        sys.exit(1)
 
 
 if __name__ == "__main__":
