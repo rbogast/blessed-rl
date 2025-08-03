@@ -41,10 +41,10 @@ class MazeRoomLayer:
         height = len(tiles)
         width = len(tiles[0]) if height > 0 else 0
         
-        # Get room parameters
-        num_rooms = ctx.get_param('num_rooms', 0)
-        min_room_size = ctx.get_param('min_room_size', 5)
-        max_room_size = ctx.get_param('max_room_size', 9)
+        # Get room parameters - ensure they are integers for Windows compatibility
+        num_rooms = int(ctx.get_param('num_rooms', 0))
+        min_room_size = int(ctx.get_param('min_room_size', 5))
+        max_room_size = int(ctx.get_param('max_room_size', 9))
         
         if num_rooms <= 0:
             return  # No rooms requested
@@ -379,8 +379,8 @@ class MazeInterconnectionLayer:
     
     def generate(self, tiles: List[List[Tile]], ctx: GenContext) -> None:
         """Create additional openings in the maze based on parameters."""
-        # Get the number of openings to create from parameters
-        maze_openings = ctx.parameters.get('maze_openings', 0)
+        # Get the number of openings to create from parameters - ensure it's an integer for Windows compatibility
+        maze_openings = int(ctx.parameters.get('maze_openings', 0))
         
         if maze_openings <= 0:
             return  # No openings requested

@@ -72,11 +72,11 @@ class RogueRoomLayer(GenLayer):
         # Define 3x3 grid cells for 23x45 map
         grid_cells = self._define_grid_cells(width, height)
         
-        # Get parameters
-        min_rooms = ctx.get_param('min_rooms', 5)
-        max_rooms = ctx.get_param('max_rooms', 7)
-        min_room_size = ctx.get_param('min_room_size', 4)
-        max_room_size = ctx.get_param('max_room_size', 8)
+        # Get parameters - ensure they are integers for Windows compatibility
+        min_rooms = int(ctx.get_param('min_rooms', 5))
+        max_rooms = int(ctx.get_param('max_rooms', 7))
+        min_room_size = int(ctx.get_param('min_room_size', 4))
+        max_room_size = int(ctx.get_param('max_room_size', 8))
         
         # Randomly select which cells will have rooms
         num_rooms = ctx.rng.randint(min_rooms, max_rooms)
@@ -121,11 +121,11 @@ class RogueRoomLayer(GenLayer):
                 row.append((x_start, y_start, x_end - x_start, y_end - y_start))
             grid_cells.append(row)
         
-        # Generate rooms with scaled parameters
-        min_rooms = ctx.get_param('min_rooms', 5)
-        max_rooms = ctx.get_param('max_rooms', 7)
-        min_room_size = max(3, min(ctx.get_param('min_room_size', 4), cell_width // 3))
-        max_room_size = max(min_room_size, min(ctx.get_param('max_room_size', 8), cell_width - 2))
+        # Generate rooms with scaled parameters - ensure they are integers for Windows compatibility
+        min_rooms = int(ctx.get_param('min_rooms', 5))
+        max_rooms = int(ctx.get_param('max_rooms', 7))
+        min_room_size = max(3, min(int(ctx.get_param('min_room_size', 4)), cell_width // 3))
+        max_room_size = max(min_room_size, min(int(ctx.get_param('max_room_size', 8)), cell_width - 2))
         
         num_rooms = ctx.rng.randint(min_rooms, max_rooms)
         selected_cells = ctx.rng.sample(list(range(9)), num_rooms)
