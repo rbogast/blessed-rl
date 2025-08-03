@@ -151,6 +151,21 @@ class InputSystem(System):
         elif key.lower() == 'f':
             self._throwing_menu()
             return True
+        elif key.lower() == 'z':
+            self._toggle_auto_explore()
+            return True
+        elif key == '.':
+            self._use_stairs_down()
+            return True
+        elif key == ',':
+            self._use_stairs_up()
+            return True
+        elif key == '>':
+            self._travel_to_stairs_down()
+            return True
+        elif key == '<':
+            self._travel_to_stairs_up()
+            return True
         elif key == 'KEY_ESCAPE' or key == '\x1b':  # Escape key
             if self.render_system and self._is_menu_active():
                 self._close_menus()
@@ -296,3 +311,23 @@ class InputSystem(System):
     def _cancel_throw(self) -> None:
         """Cancel the throw action."""
         self.pending_action = ('cancel_throw',)
+    
+    def _toggle_auto_explore(self) -> None:
+        """Toggle auto-exploration."""
+        self.pending_action = ('toggle_auto_explore',)
+    
+    def _use_stairs_down(self) -> None:
+        """Use downward stairs at current position."""
+        self.pending_action = ('use_stairs_down',)
+    
+    def _use_stairs_up(self) -> None:
+        """Use upward stairs at current position."""
+        self.pending_action = ('use_stairs_up',)
+    
+    def _travel_to_stairs_down(self) -> None:
+        """Travel to downward stairs."""
+        self.pending_action = ('travel_to_stairs_down',)
+    
+    def _travel_to_stairs_up(self) -> None:
+        """Travel to upward stairs."""
+        self.pending_action = ('travel_to_stairs_up',)

@@ -21,7 +21,10 @@ from systems.render import RenderSystem
 class MapPreviewTool:
     """Map preview tool for testing map generation and editing schedule.yaml."""
     
-    def __init__(self):
+    def __init__(self, charset_override=None):
+        # Store charset override for use in initialization
+        self.charset_override = charset_override
+        
         # Initialize core ECS
         self.world = World()
         
@@ -133,7 +136,7 @@ class MapPreviewTool:
         
         self.render_system.menu_manager.is_menu_active = custom_is_menu_active
         self.input_system = InputSystem(self.world, self.game_state, self.message_log, self.render_system)
-        self.fov_system = FOVSystem(self.world, self.world_generator)
+        self.fov_system = FOVSystem(self.world, self.world_generator, message_log=self.message_log)
         
         # Enable preview mode in FOV system
         self.fov_system.set_preview_mode(True)
@@ -246,7 +249,7 @@ class MapPreviewTool:
         center_y = self.current_level.height // 2
         
         # Get player glyph from configuration
-        glyph_config = GlyphConfig()
+        glyph_config = GlyphConfig(charset_override=self.charset_override)
         player_char, player_color = glyph_config.get_entity_glyph('player')
         
         # Add player components with all required components for status display
@@ -458,7 +461,7 @@ class MapPreviewTool:
         center_y = self.current_level.height // 2
         
         # Get player glyph from configuration
-        glyph_config = GlyphConfig()
+        glyph_config = GlyphConfig(charset_override=self.charset_override)
         player_char, player_color = glyph_config.get_entity_glyph('player')
         
         # Add player components

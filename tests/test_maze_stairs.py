@@ -4,7 +4,7 @@ Test script to verify that maze stairs are placed at dead ends.
 """
 
 import random
-from game.worldgen.maze_generator import MazeBiome
+from game.worldgen.templates.maze import MazeTemplate
 from game.worldgen.core import WorldConfig, GenContext, Tile
 
 
@@ -65,11 +65,15 @@ def test_maze_stairs():
     width, height = 21, 15  # Odd dimensions work best for mazes
     seed = 12345
     
-    # Create tiles grid
+    # Create tiles grid and initialize as walls
     tiles = [[Tile(x, y) for x in range(width)] for y in range(height)]
+    for y in range(height):
+        for x in range(width):
+            tiles[y][x].is_wall = True
+            tiles[y][x].tile_type = 'wall'
     
     # Create generation context
-    config = WorldConfig(chunk_width=width, chunk_height=height, halo_size=0, seed=seed)
+    config = WorldConfig(chunk_width=width, chunk_height=height, seed=seed)
     rng = random.Random(seed)
     ctx = GenContext(
         chunk_id=0,
@@ -83,8 +87,8 @@ def test_maze_stairs():
     print("\nTest 1: Level 0 (no upstairs)")
     print("-" * 30)
     
-    maze_biome = MazeBiome()
-    downstairs_pos = maze_biome.generate_with_stairs(tiles, ctx, None)
+    maze_template = MazeTemplate()
+    downstairs_pos = maze_template.generate_with_stairs(tiles, ctx, None)
     
     print(f"Downstairs placed at: {downstairs_pos}")
     if downstairs_pos:
@@ -100,14 +104,18 @@ def test_maze_stairs():
     print("\nTest 2: Level 1+ (with upstairs)")
     print("-" * 30)
     
-    # Reset tiles
+    # Reset tiles and initialize as walls
     tiles = [[Tile(x, y) for x in range(width)] for y in range(height)]
+    for y in range(height):
+        for x in range(width):
+            tiles[y][x].is_wall = True
+            tiles[y][x].tile_type = 'wall'
     
     # Use the previous downstairs as upstairs for next level
     upstairs_pos = downstairs_pos
     
-    maze_biome = MazeBiome()
-    downstairs_pos = maze_biome.generate_with_stairs(tiles, ctx, upstairs_pos)
+    maze_template = MazeTemplate()
+    downstairs_pos = maze_template.generate_with_stairs(tiles, ctx, upstairs_pos)
     
     print(f"Upstairs placed at: {upstairs_pos}")
     print(f"Downstairs placed at: {downstairs_pos}")

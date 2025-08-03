@@ -41,9 +41,6 @@ class GameConfig:
     CAMERA_VIEWPORT_WIDTH = VIEWPORT_WIDTH
     CAMERA_VIEWPORT_HEIGHT = VIEWPORT_HEIGHT
     
-    # World generation
-    HALO_SIZE = 10
-    LEGACY_HALO_SIZE = 5  # For compatibility layer
     
     # Field of View
     PLAYER_SIGHT_RADIUS = 20

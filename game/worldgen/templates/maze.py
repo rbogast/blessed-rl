@@ -21,6 +21,9 @@ class MazeTemplate(MapTemplate):
     
     name = "maze"
     
+    def __init__(self):
+        super().__init__()
+    
     def get_parameters(self) -> Dict[str, ParameterDef]:
         """Return the parameters this template exposes for editing."""
         return {
@@ -55,7 +58,7 @@ class MazeTemplate(MapTemplate):
         smart_start, suggested_downstairs = self._determine_stair_positions(tiles, ctx, start_position, rooms)
         
         # Generate base maze starting from smart upstairs position
-        maze_layer.generate_with_stairs(tiles, ctx, smart_start)
+        actual_downstairs = maze_layer.generate_with_stairs(tiles, ctx, smart_start)
         
         # Apply interconnection layer (before final stair placement)
         interconnection_layer = self.layers[2]  # MazeInterconnectionLayer
@@ -65,7 +68,8 @@ class MazeTemplate(MapTemplate):
         border_layer = self.layers[3]  # MazeBorderLayer
         border_layer.generate(tiles, ctx)
         
-        return suggested_downstairs
+        # Return the actual downstairs position from maze generation
+        return actual_downstairs if actual_downstairs else suggested_downstairs
     
     def _determine_stair_positions(self, tiles, ctx, start_position, rooms):
         """Determine optimal stair positions based on room availability."""

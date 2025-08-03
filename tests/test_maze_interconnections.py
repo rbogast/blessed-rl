@@ -4,7 +4,7 @@ Test script to verify that maze interconnections work correctly.
 """
 
 import random
-from game.worldgen.maze_generator import MazeBiome
+from game.worldgen.templates.maze import MazeTemplate
 from game.worldgen.core import WorldConfig, GenContext, Tile
 
 
@@ -78,7 +78,7 @@ def test_maze_interconnections():
     print("-" * 40)
     
     tiles = [[Tile(x, y) for x in range(width)] for y in range(height)]
-    config = WorldConfig(chunk_width=width, chunk_height=height, halo_size=0, seed=seed)
+    config = WorldConfig(chunk_width=width, chunk_height=height, seed=seed)
     rng = random.Random(seed)
     ctx = GenContext(
         chunk_id=0,
@@ -88,8 +88,8 @@ def test_maze_interconnections():
         parameters={}  # No maze_openings parameter
     )
     
-    maze_biome = MazeBiome()
-    downstairs_pos = maze_biome.generate_with_stairs(tiles, ctx, None)
+    maze_template = MazeTemplate()
+    downstairs_pos = maze_template.generate_with_stairs(tiles, ctx, None)
     
     # Count walls on odd coordinates (potential interconnection points)
     odd_walls_before = 0
@@ -115,8 +115,8 @@ def test_maze_interconnections():
         parameters={'maze_openings': 5}  # Request 5 interconnections
     )
     
-    maze_biome = MazeBiome()
-    downstairs_pos = maze_biome.generate_with_stairs(tiles, ctx, None)
+    maze_template = MazeTemplate()
+    downstairs_pos = maze_template.generate_with_stairs(tiles, ctx, None)
     
     # Count walls on odd coordinates after interconnections
     odd_walls_after = 0
@@ -149,8 +149,8 @@ def test_maze_interconnections():
         parameters={'maze_openings': 15}  # Request 15 interconnections
     )
     
-    maze_biome = MazeBiome()
-    downstairs_pos = maze_biome.generate_with_stairs(tiles, ctx, None)
+    maze_template = MazeTemplate()
+    downstairs_pos = maze_template.generate_with_stairs(tiles, ctx, None)
     
     # Count walls on odd coordinates after many interconnections
     odd_walls_many = 0
@@ -165,7 +165,7 @@ def test_maze_interconnections():
     
     print_maze_with_openings(tiles, None, downstairs_pos, [])
     
-    # Test 4: Verify stairs still at dead ends
+    # Test 4: Verify stairs still at dead ends with interconnections
     print("\nTest 4: Verify stairs still at dead ends with interconnections")
     print("-" * 60)
     
@@ -180,8 +180,8 @@ def test_maze_interconnections():
     )
     
     upstairs_pos = (5, 5)  # Fixed upstairs position
-    maze_biome = MazeBiome()
-    downstairs_pos = maze_biome.generate_with_stairs(tiles, ctx, upstairs_pos)
+    maze_template = MazeTemplate()
+    downstairs_pos = maze_template.generate_with_stairs(tiles, ctx, upstairs_pos)
     
     # Check if stairs are still dead ends
     def count_walkable_neighbors(x, y):

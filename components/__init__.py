@@ -12,6 +12,7 @@ from .dead import Dead
 from .effects import Physics, StatusEffect, TileModification, WeaponEffects
 from .skills import Skills
 from .throwing import ThrowingCursor, ThrownObject
+from .auto_explore import AutoExplore, AutoExploreState, ExploreTarget, ExploreTargetType
 
 __all__ = [
     'Position', 'Renderable', 'Player', 'Blocking', 'Visible', 'Door', 'Prefab',
@@ -23,5 +24,6 @@ __all__ = [
     'Dead',
     'Physics', 'StatusEffect', 'TileModification', 'WeaponEffects',
     'Skills',
-    'ThrowingCursor', 'ThrownObject'
+    'ThrowingCursor', 'ThrownObject',
+    'AutoExplore', 'AutoExploreState', 'ExploreTarget', 'ExploreTargetType'
 ]

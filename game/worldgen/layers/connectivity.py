@@ -14,22 +14,17 @@ class ConnectivityLayer(GenLayer):
         """Create a path from west to east edge."""
         height = len(tiles)
         width = len(tiles[0]) if height > 0 else 0
-        halo_size = ctx.config.halo_size
         
-        # Work within the core area (excluding halo)
-        core_width = width - 2 * halo_size
-        core_height = height - 2 * halo_size
-        
-        if core_width <= 0 or core_height <= 0:
+        if width <= 0 or height <= 0:
             return
         
         # Find or create entrance on west edge
-        west_x = halo_size
-        west_y = self._find_or_create_entrance(tiles, west_x, halo_size, core_height, ctx.rng)
+        west_x = 0
+        west_y = self._find_or_create_entrance(tiles, west_x, 0, height, ctx.rng)
         
         # Find or create exit on east edge
-        east_x = halo_size + core_width - 1
-        east_y = self._find_or_create_entrance(tiles, east_x, halo_size, core_height, ctx.rng)
+        east_x = width - 1
+        east_y = self._find_or_create_entrance(tiles, east_x, 0, height, ctx.rng)
         
         # Create path between them
         self._create_path(tiles, (west_x, west_y), (east_x, east_y), ctx.rng)

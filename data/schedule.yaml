@@ -16,7 +16,7 @@
     tree_count: 14
 
 - from: 1
-  to: 4
+  to: 2
   biome: rooms
   overrides:
     wall_probability: 0.45
@@ -24,8 +24,19 @@
     ca_iterations: 5
     num_rooms: 15
 
-- from: 5
-  to: 10
+- from: 3
+  to: 6
+  biome: maze
+  overrides:
+    enemy_density: 0.3
+    num_rooms: 9
+    maze_openings: 20
+    extra_connections: 2
+    min_room_size: 3
+    max_room_size: 5
+
+- from: 7
+  to: 12
   biome: rogue
   overrides:
     enemy_density: 0.3

@@ -20,7 +20,6 @@ class WorldConfig:
     """Configuration for world generation."""
     chunk_width: int = 80
     chunk_height: int = 23
-    halo_size: int = 10
     seed: Optional[int] = None
 
 
@@ -33,65 +32,47 @@ class Tile:
         self.is_wall = is_wall
         self.visible = False
         self.explored = False
+        self.interesting = False  # For auto-explore: contains items, stairs, etc.
         self.tile_type = 'wall' if is_wall else 'floor'
         self.properties: Dict[str, Any] = {}
 
 
 class Chunk:
-    """Represents a chunk of the world with halo support."""
+    """Represents a chunk of the world."""
     
     def __init__(self, chunk_id: int, config: WorldConfig):
         self.chunk_id = chunk_id
         self.config = config
         self.width = config.chunk_width
         self.height = config.chunk_height
-        self.halo_size = config.halo_size
-        
-        # Total size including halo
-        self.total_width = self.width + 2 * self.halo_size
-        self.total_height = self.height + 2 * self.halo_size
         
         self.tiles: List[List[Tile]] = []
         self.entities: List[int] = []  # Entity IDs in this chunk
         
-        # Initialize tiles (including halo)
-        for y in range(self.total_height):
+        # Initialize tiles
+        for y in range(self.height):
             row = []
-            for x in range(self.total_width):
+            for x in range(self.width):
                 # Calculate global coordinates
-                global_x = chunk_id * self.width + (x - self.halo_size)
-                global_y = y - self.halo_size
+                global_x = chunk_id * self.width + x
+                global_y = y
                 row.append(Tile(global_x, global_y))
             self.tiles.append(row)
     
-    def get_tile(self, local_x: int, local_y: int, include_halo: bool = False) -> Optional[Tile]:
+    def get_tile(self, local_x: int, local_y: int) -> Optional[Tile]:
         """Get a tile by local coordinates."""
-        if include_halo:
-            # Coordinates include halo
-            if 0 <= local_x < self.total_width and 0 <= local_y < self.total_height:
-                return self.tiles[local_y][local_x]
-        else:
-            # Coordinates are within the actual chunk (no halo)
-            halo_x = local_x + self.halo_size
-            halo_y = local_y + self.halo_size
-            if 0 <= halo_x < self.total_width and 0 <= halo_y < self.total_height:
-                return self.tiles[halo_y][halo_x]
+        if 0 <= local_x < self.width and 0 <= local_y < self.height:
+            return self.tiles[local_y][local_x]
         return None
     
-    def is_wall(self, local_x: int, local_y: int, include_halo: bool = False) -> bool:
+    def is_wall(self, local_x: int, local_y: int) -> bool:
         """Check if a position is a wall."""
-        tile = self.get_tile(local_x, local_y, include_halo)
+        tile = self.get_tile(local_x, local_y)
         return tile is None or tile.is_wall
     
     def get_core_tiles(self) -> List[List[Tile]]:
-        """Get only the core tiles (without halo) for final output."""
-        core_tiles = []
-        for y in range(self.halo_size, self.halo_size + self.height):
-            row = []
-            for x in range(self.halo_size, self.halo_size + self.width):
-                row.append(self.tiles[y][x])
-            core_tiles.append(row)
-        return core_tiles
+        """Get the tiles for final output."""
+        return self.tiles
 
 
 @dataclass
@@ -134,7 +115,7 @@ class WorldGenerator:
         if chunk_id in self.chunks:
             return self.chunks[chunk_id]
         
-        # Create chunk with halo
+        # Create chunk
         chunk = Chunk(chunk_id, self.config)
         
         # Get generation parameters from scheduler

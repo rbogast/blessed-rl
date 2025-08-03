@@ -40,9 +40,9 @@ terrain:
     visible_color: "white"
     explored_color: "blue"
   pine_tree:
-    unicode: "↑"
-    ascii: "^"
-    cp437: "↑"
+    unicode: "♠"
+    ascii: "P"
+    cp437: "♠"
     visible_color: "green"
     explored_color: "blue"
   oak_tree:

@@ -92,7 +92,7 @@ from game.worldgen.core import WorldConfig, GenContext, Tile
 import random
 
 # Create tiles grid
-config = WorldConfig(chunk_width=45, chunk_height=23, halo_size=0, seed=12345)
+config = WorldConfig(chunk_width=45, chunk_height=23, seed=12345)
 tiles = [[Tile(x, y) for x in range(45)] for y in range(23)]
 
 # Create generation context

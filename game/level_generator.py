@@ -51,7 +51,6 @@ class LevelGenerator:
         self.config = WorldConfig(
             chunk_width=GameConfig.LEVEL_WIDTH,
             chunk_height=GameConfig.LEVEL_HEIGHT,
-            halo_size=0,  # No halo needed for single levels
             seed=self.seed
         )
         
@@ -87,7 +86,6 @@ class LevelGenerator:
         generation_config = WorldConfig(
             chunk_width=self.config.chunk_width,
             chunk_height=self.config.chunk_height,
-            halo_size=self.config.halo_size,
             seed=level_seed  # Use the turn-based seed
         )
         

@@ -1,11 +1,11 @@
 """
-Modular world generation system for the ECS Roguelike Engine.
+World generation system for blessed-rl.
 
-This package provides a plugin-based world generation system that supports:
-- Biome-based generation with configurable parameters
-- Layer-based generation pipeline
-- Scheduler-driven content progression
-- Seamless chunk generation with halos
+Features:
+- Biome-based generation with configurable templates
+- Layered generation system for composable effects
+- Scheduling system for progressive world changes
+- Level-based generation for dungeon exploration
 """
 
 from .core import Tile, Chunk

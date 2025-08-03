@@ -16,13 +16,14 @@ import math
 class FOVSystem(System):
     """Implements recursive shadowcasting for field of view calculation."""
     
-    def __init__(self, world, world_generator: "LevelWorldGenerator", sight_radius: int = None):
+    def __init__(self, world, world_generator: "LevelWorldGenerator", sight_radius: int = None, message_log=None):
         super().__init__(world)
         self.world_generator = world_generator
         self.sight_radius = sight_radius if sight_radius is not None else GameConfig.PLAYER_SIGHT_RADIUS
         self.last_player_pos = None  # Cache last position to avoid unnecessary recalculation
         self.previously_visible_tiles = set()  # Track previously visible tiles
         self.preview_mode = False  # Flag for map preview mode
+        self.message_log = message_log  # For discovery messages
         
         # Octant multipliers for the 8 directions
         self.octant_multipliers = [
@@ -36,6 +37,10 @@ class FOVSystem(System):
         """Enable or disable preview mode."""
         self.preview_mode = enabled
         # Force recalculation when mode changes
+        self.last_player_pos = None
+    
+    def force_recalculation(self) -> None:
+        """Force FOV recalculation on next update."""
         self.last_player_pos = None
     
     def update(self, dt: float = 0.0) -> None:
@@ -262,8 +267,13 @@ class FOVSystem(System):
         # Mark the tile as explored in the world generator
         tile = self.world_generator.get_tile_at(x, y)
         if tile:
+            was_explored = tile.explored
             tile.visible = True
             tile.explored = True
+            
+            # Check if this tile should become interesting (first time seeing stairs/items)
+            if not was_explored:
+                self._check_and_mark_tile_interesting(x, y, tile)
         
         # Mark any entities at this position as visible using cache
         entity_id = self.entity_position_cache.get((x, y))
@@ -282,3 +292,63 @@ class FOVSystem(System):
         """Check if a position has been explored."""
         tile = self.world_generator.get_tile_at(x, y)
         return tile and tile.explored
+    
+    def _check_and_mark_tile_interesting(self, x: int, y: int, tile) -> None:
+        """Check if a tile should be marked as interesting and interrupt auto-explore if needed."""
+        from components.items import Item, Pickupable
+        
+        # Check for stairs
+        stairs_type = self.world_generator.is_stairs_at(x, y)
+        has_stairs = stairs_type is not None
+        
+        # Check for items
+        has_items = False
+        item_entities = self.world.get_entities_with_components(Position, Item, Pickupable)
+        for entity_id in item_entities:
+            position = self.world.get_component(entity_id, Position)
+            if position and position.x == x and position.y == y:
+                has_items = True
+                break
+        
+        # Check for closed doors
+        has_door = False
+        door_entities = self.world.get_entities_with_components(Position, Door)
+        for entity_id in door_entities:
+            position = self.world.get_component(entity_id, Position)
+            door = self.world.get_component(entity_id, Door)
+            if position and door and position.x == x and position.y == y and not door.is_open:
+                has_door = True
+                break
+        
+        # Mark tile as interesting if it contains interesting things
+        if has_stairs or has_items or has_door:
+            tile.interesting = True
+            
+            # Interrupt auto-explore for any player entities
+            self._interrupt_auto_explore_for_discovery(x, y, has_stairs, has_items, has_door)
+    
+    def _interrupt_auto_explore_for_discovery(self, x: int, y: int, has_stairs: bool, has_items: bool, has_door: bool) -> None:
+        """Interrupt auto-explore when new interesting things are discovered."""
+        from components.auto_explore import AutoExplore
+        
+        # Find all player entities with auto-explore
+        player_entities = self.world.get_entities_with_components(Player, Position, AutoExplore)
+        
+        for player_entity in player_entities:
+            auto_explore = self.world.get_component(player_entity, AutoExplore)
+            if auto_explore and auto_explore.is_active():
+                # Determine what was discovered
+                discovery_type = ""
+                if has_stairs:
+                    discovery_type = "stairs"
+                elif has_items:
+                    discovery_type = "item"
+                elif has_door:
+                    discovery_type = "door"
+                
+                # Interrupt auto-explore
+                auto_explore.interrupt(f"Discovered {discovery_type}")
+                
+                # Add message to log if available
+                if self.message_log:
+                    self.message_log.add_warning(f"Auto-explore interrupted - discovered {discovery_type}!")
