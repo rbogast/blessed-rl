@@ -18,6 +18,8 @@ from rendering.tile_renderer import TileRenderer
 import blessed
 from contextlib import ExitStack
 import atexit
+import sys
+import os
 
 
 class RenderSystem(System):
@@ -30,8 +32,16 @@ class RenderSystem(System):
         self.message_log = message_log
         self.world_generator = world_generator
         self.game_state = game_state
+        
+        # Setup encoding for cross-platform compatibility
+        self._setup_encoding()
+        
+        # Initialize glyph configuration with platform detection
         self.glyph_config = GlyphConfig()
         self.term = blessed.Terminal()
+        
+        # Log platform and character set information
+        self._log_startup_info()
         
         # Terminal state management
         self._stack = ExitStack()
@@ -209,6 +219,54 @@ class RenderSystem(System):
     def set_throwing_system(self, throwing_system) -> None:
         """Set the throwing system reference for rendering throwing cursor and line."""
         self.tile_renderer.throwing_system = throwing_system
+    
+    def _setup_encoding(self) -> None:
+        """Setup proper encoding for cross-platform compatibility."""
+        # Try to ensure UTF-8 encoding on stdout/stderr
+        if hasattr(sys.stdout, 'reconfigure'):
+            try:
+                sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+                sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+            except (AttributeError, OSError):
+                # Python < 3.7 or encoding not supported
+                pass
+        
+        # Set environment variables for better Unicode support
+        if os.name == 'nt':  # Windows
+            # Try to enable UTF-8 mode on Windows
+            os.environ.setdefault('PYTHONIOENCODING', 'utf-8')
+            # Enable ANSI escape sequences on Windows 10+
+            try:
+                import ctypes
+                kernel32 = ctypes.windll.kernel32
+                kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
+            except (ImportError, AttributeError, OSError):
+                pass
+    
+    def _log_startup_info(self) -> None:
+        """Log startup information about platform and character set."""
+        charset = self.glyph_config.get_character_set()
+        
+        # Add startup message to game log
+        self.message_log.add_system(f"Character set: {charset}")
+        
+        # Detailed debug info if requested
+        if os.environ.get('BLESSED_RL_DEBUG'):
+            platform_info = self.glyph_config.platform_detector.get_platform_info()
+            self.message_log.add_system(f"Platform: {platform_info['system']}")
+            self.message_log.add_system(f"Encoding: {platform_info['encoding']}")
+            self.message_log.add_system(f"Unicode support: {platform_info['supports_unicode']}")
+            
+            # Test character rendering
+            test_chars = {
+                'unicode': ['·', '▒', '↑', '♣'],
+                'ascii': ['.', '#', '^', '&'],
+                'cp437': ['·', '▒', '↑', '♣']
+            }
+            
+            if charset in test_chars:
+                char_list = ', '.join(test_chars[charset])
+                self.message_log.add_system(f"Test chars: {char_list}")
     
     def cleanup(self) -> None:
         """Clean up terminal state."""

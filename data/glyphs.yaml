@@ -1,47 +1,90 @@
 # Glyph configuration for visual elements in the game
 # This file defines how terrain and entities are displayed
+# Each glyph can have multiple character sets for cross-platform compatibility
 
 terrain:
   floor:
-    char: "·"
+    unicode: "·"
+    ascii: "."
+    cp437: "·"  # Code page 437 (DOS/Windows)
     visible_color: "white"
     explored_color: "blue"
   wall:
-    char: "▒"
+    unicode: "▒"
+    ascii: "#"
+    cp437: "▒"
     visible_color: "yellow"
     explored_color: "blue"
   door_closed:
-    char: "+"
+    unicode: "+"
+    ascii: "+"
+    cp437: "+"
     visible_color: "brown"
     explored_color: "blue"
   door_open:
-    char: "/"
+    unicode: "/"
+    ascii: "/"
+    cp437: "/"
     visible_color: "brown"
     explored_color: "blue"
   stairs_down:
-    char: ">"
+    unicode: ">"
+    ascii: ">"
+    cp437: ">"
     visible_color: "white"
     explored_color: "blue"
   stairs_up:
-    char: "<"
+    unicode: "<"
+    ascii: "<"
+    cp437: "<"
     visible_color: "white"
     explored_color: "blue"
   pine_tree:
-    char: "↑"
+    unicode: "↑"
+    ascii: "^"
+    cp437: "↑"
     visible_color: "green"
     explored_color: "blue"
   oak_tree:
-    char: "♣"
+    unicode: "♣"
+    ascii: "&"
+    cp437: "♣"
     visible_color: "green"
     explored_color: "blue"
 
 entities:
   # Player character
   player:
-    char: "@"
+    unicode: "@"
+    ascii: "@"
+    cp437: "@"
     color: "white"
   
   # Prefab building walls - stone construction
   stone_wall:
-    char: "#"
+    unicode: "#"
+    ascii: "#"
+    cp437: "#"
     color: "white"
+
+# Character set configuration
+character_sets:
+  unicode:
+    name: "Unicode (UTF-8)"
+    description: "Full Unicode character set with special symbols"
+    encoding: "utf-8"
+  ascii:
+    name: "ASCII Compatible"
+    description: "Basic ASCII characters for maximum compatibility"
+    encoding: "ascii"
+  cp437:
+    name: "Code Page 437"
+    description: "DOS/Windows code page with extended ASCII"
+    encoding: "cp437"
+
+# Platform-specific defaults
+platform_defaults:
+  linux: "unicode"
+  darwin: "unicode"  # macOS
+  windows: "ascii"   # Conservative default for Windows
+  default: "ascii"   # Fallback for unknown platforms
