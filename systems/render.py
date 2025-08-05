@@ -220,6 +220,10 @@ class RenderSystem(System):
         """Set the throwing system reference for rendering throwing cursor and line."""
         self.tile_renderer.throwing_system = throwing_system
     
+    def set_examine_system(self, examine_system) -> None:
+        """Set the examine system reference for rendering examine cursor."""
+        self.tile_renderer.examine_system = examine_system
+    
     def _setup_encoding(self) -> None:
         """Setup proper encoding for cross-platform compatibility."""
         # Try to ensure UTF-8 encoding on stdout/stderr

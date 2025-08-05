@@ -126,6 +126,9 @@ class MenuManager:
             'drop': DropMenu(world),
             'throwing': ThrowingMenu(world)
         }
+        
+        # Examine menu will be set later when examine system is available
+        self.examine_menu = None
     
     def show_menu(self, menu_type: str) -> None:
         """Show a specific menu type."""
@@ -139,10 +142,25 @@ class MenuManager:
         self.active_menu = None
         self.show_inventory = True
     
+    def show_examine_menu(self) -> None:
+        """Show the examine menu."""
+        if self.examine_menu:
+            self.active_menu = self.examine_menu
+            self.active_menu.reset()
+            self.show_inventory = False
+    
     def hide_all(self) -> None:
         """Hide all menus and return to messages."""
         self.active_menu = None
         self.show_inventory = False
+    
+    def set_examine_menu(self, examine_menu) -> None:
+        """Set the examine menu instance."""
+        self.examine_menu = examine_menu
+    
+    def is_examine_active(self) -> bool:
+        """Check if examine menu is currently active."""
+        return self.active_menu is self.examine_menu and self.examine_menu is not None
     
     def is_menu_active(self) -> bool:
         """Check if any navigable menu is active."""

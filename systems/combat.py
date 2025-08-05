@@ -157,7 +157,7 @@ class CombatSystem(System):
         target_name = self._get_entity_name(target_id)
         
         if self.world.has_component(target_id, Player):
-            # Player died - convert to corpse but keep as player
+            # Player died - handle permadeath
             species = self.world.get_component(target_id, Species)
             if not species:
                 # Add default human species if missing
@@ -171,8 +171,17 @@ class CombatSystem(System):
             if renderable:
                 renderable.color = 'red'
             
-            self.message_log.add_combat("You have died! The world continues around you...")
-            self.message_log.add_combat("Press 5 to wait and observe, or Q to quit.")
+            # Set game over state
+            position = self.world.get_component(target_id, Position)
+            final_x = position.x if position else 0
+            self.game_state.game_over("You died!", final_x)
+            
+            self.message_log.add_combat("You have died! Game Over.")
+            self.message_log.add_combat("Your save file has been deleted (permadeath).")
+            self.message_log.add_combat("Press any key to return to the launcher.")
+            
+            # Delete save file for permadeath (will be called by main game loop)
+            # We don't call it directly here to avoid import cycles
             return None
         else:
             # Enemy died

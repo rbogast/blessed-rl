@@ -255,7 +255,7 @@ class AutoExploreSystem(System):
                         # Use the first item entity for the target
                         targets.append(ExploreTarget(x, y, ExploreTargetType.ITEM, entity_id=items_at_pos[0]))
                         interesting_count += 1
-                    elif door_entity:
+                    elif door_entity is not None:
                         door = self.world.get_component(door_entity, Door)
                         if door and not door.is_open:
                             targets.append(ExploreTarget(x, y, ExploreTargetType.DOOR, entity_id=door_entity))

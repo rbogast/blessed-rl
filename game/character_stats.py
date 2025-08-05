@@ -67,7 +67,7 @@ def get_effective_attributes(attributes: CharacterAttributes, equipment_bonuses:
         constitution=attributes.constitution + attr_bonuses.get('constitution', 0),
         intelligence=attributes.intelligence + attr_bonuses.get('intelligence', 0),
         willpower=attributes.willpower + attr_bonuses.get('willpower', 0),
-        aura=attributes.aura + attr_bonuses.get('aura', 0)
+        perception=attributes.perception + attr_bonuses.get('perception', 0)
     )
     
     return effective_attrs
@@ -119,6 +119,6 @@ def get_resistance_bonus(attributes: CharacterAttributes, resistance_type: str) 
     elif resistance_type == 'mental':
         return attributes.willpower // 3
     elif resistance_type == 'fear':
-        return attributes.aura // 4 + attributes.willpower // 4
+        return attributes.perception // 4 + attributes.willpower // 4
     else:
         return 0

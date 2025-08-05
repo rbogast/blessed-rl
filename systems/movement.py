@@ -37,7 +37,7 @@ class MovementSystem(System):
         
         # Check for doors first - they can be opened
         door_entity = self._get_door_at_position(new_x, new_y)
-        if door_entity:
+        if door_entity is not None:
             door = self.world.get_component(door_entity, Door)
             if door and not door.is_open:
                 # Open the door and move to its position

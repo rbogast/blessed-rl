@@ -60,17 +60,17 @@ class StatusDisplay:
                 con_text = self.formatter.apply_color(" CON ", "bright_black") + self.formatter.apply_color("10", "white")
                 return str_text + agi_text + con_text
         elif line_num == 3:
-            # Second attribute line: INT WIL AUR - now with proper gray/white colors
+            # Second attribute line: INT PER WIL - now with proper gray/white colors
             if attributes:
                 int_text = self.formatter.apply_color("INT ", "bright_black") + self.formatter.apply_color(f"{attributes.intelligence:2d}", "white")
+                per_text = self.formatter.apply_color(" PER ", "bright_black") + self.formatter.apply_color(f"{attributes.perception:2d}", "white")
                 wil_text = self.formatter.apply_color(" WIL ", "bright_black") + self.formatter.apply_color(f"{attributes.willpower:2d}", "white")
-                aur_text = self.formatter.apply_color(" AUR ", "bright_black") + self.formatter.apply_color(f"{attributes.aura:2d}", "white")
-                return int_text + wil_text + aur_text
+                return int_text + per_text + wil_text
             else:
                 int_text = self.formatter.apply_color("INT ", "bright_black") + self.formatter.apply_color("10", "white")
+                per_text = self.formatter.apply_color(" PER ", "bright_black") + self.formatter.apply_color("10", "white")
                 wil_text = self.formatter.apply_color(" WIL ", "bright_black") + self.formatter.apply_color("10", "white")
-                aur_text = self.formatter.apply_color(" AUR ", "bright_black") + self.formatter.apply_color("10", "white")
-                return int_text + wil_text + aur_text
+                return int_text + per_text + wil_text
         elif line_num == 4:
             # HP line
             if health:

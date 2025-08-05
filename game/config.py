@@ -43,7 +43,7 @@ class GameConfig:
     
     
     # Field of View
-    PLAYER_SIGHT_RADIUS = 20
+    PLAYER_SIGHT_RADIUS = 45
     
     # Rendering colors
     EXPLORED_TILE_COLOR = 'blue'  # Color for explored but not visible tiles

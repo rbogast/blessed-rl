@@ -7,12 +7,13 @@ from game.config import GameConfig
 class TileRenderer:
     """Handles rendering of terrain tiles and world elements."""
     
-    def __init__(self, world_generator, glyph_config, entity_renderer, game_state=None, throwing_system=None):
+    def __init__(self, world_generator, glyph_config, entity_renderer, game_state=None, throwing_system=None, examine_system=None):
         self.world_generator = world_generator
         self.glyph_config = glyph_config
         self.entity_renderer = entity_renderer
         self.game_state = game_state
         self.throwing_system = throwing_system
+        self.examine_system = examine_system
         self.WORLD_HEIGHT = GameConfig.MAP_HEIGHT
     
     def get_tile_display(self, world_x: int, world_y: int) -> Tuple[str, str]:
@@ -30,7 +31,19 @@ class TileRenderer:
         if not tile.explored:
             return ' ', 'black'  # Never explored - show nothing
         
-        # Check for throwing cursor and line first (highest priority)
+        # Check for examine cursor first (highest priority)
+        if self.examine_system and self.game_state:
+            player_entity = self.game_state.get_player_entity()
+            if player_entity and self.examine_system.is_examine_active(player_entity):
+                # Check if this position is the examine cursor
+                cursor_pos = self.examine_system.get_cursor_position(player_entity)
+                if cursor_pos and cursor_pos == (world_x, world_y):
+                    # Get the original glyph that would be displayed at this position
+                    original_char, original_color = self._get_original_tile_glyph(world_x, world_y, tile)
+                    # Black text on white background for examine cursor
+                    return original_char, 'black_on_white'
+        
+        # Check for throwing cursor and line (second priority)
         if self.throwing_system and self.game_state:
             player_entity = self.game_state.get_player_entity()
             if player_entity and self.throwing_system.is_throwing_active(player_entity):

@@ -73,7 +73,7 @@ class GameInitializer:
         # Create player attributes (boosted for testing)
         player_attributes = CharacterAttributes(
             strength=20, agility=15, constitution=15, 
-            intelligence=10, willpower=10, aura=8
+            intelligence=10, willpower=10, perception=8
         )
         player_experience = Experience(current_xp=0, level=1)
         

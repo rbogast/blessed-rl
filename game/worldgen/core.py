@@ -196,7 +196,7 @@ class WorldGenerator:
                 constitution=attrs['constitution'],
                 intelligence=attrs['intelligence'],
                 willpower=attrs['willpower'],
-                aura=attrs['aura']
+                perception=attrs['perception']
             )
             
             # Calculate HP from attributes (enemies are level 1)
@@ -216,7 +216,7 @@ class WorldGenerator:
                 constitution=spawn_info.get('defense', 5) * 2,  # Convert defense to constitution
                 intelligence=8,
                 willpower=8,
-                aura=6
+                perception=6
             )
             
             # Use old health value or calculate from attributes

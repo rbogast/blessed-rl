@@ -29,6 +29,7 @@ from systems.render import RenderSystem
 from systems.skills import SkillsSystem
 from systems.throwing import ThrowingSystem
 from systems.auto_explore import AutoExploreSystem
+from systems.examine import ExamineSystem
 from game.prefabs import PrefabManager
 from game.item_factory import ItemFactory
 from effects.core import EffectsManager
@@ -38,6 +39,7 @@ from effects.tile_effects import TileEffectsSystem, BloodSplatterEffect
 from game.game_initializer import GameInitializer
 from game.level_manager import LevelManager
 from game.action_handler import ActionHandler
+from game.save_system import SaveSystem
 
 
 class RoguelikeGame:
@@ -99,8 +101,14 @@ class RoguelikeGame:
         self.auto_explore_system = AutoExploreSystem(self.world, self.movement_system, self.fov_system,
                                                     self.world_generator, self.message_log)
         
+        # Initialize examine system
+        self.examine_system = ExamineSystem(self.world, self.fov_system, self.message_log, self.world_generator)
+        
         # Set throwing system reference in render system for cursor visualization
         self.render_system.set_throwing_system(self.throwing_system)
+        
+        # Set examine system reference in render system for cursor visualization
+        self.render_system.set_examine_system(self.examine_system)
         
         # Initialize helper classes
         self.level_manager = LevelManager(self.world, self.world_generator, self.game_state, 
@@ -112,6 +120,9 @@ class RoguelikeGame:
         self.game_initializer = GameInitializer(self.world, self.world_generator, self.game_state,
                                               self.message_log, self.glyph_config, self.item_factory)
         
+        # Initialize save system
+        self.save_system = SaveSystem()
+        
         # Add systems to world
         self.world.systems.add_system(self.input_system)
         self.world.systems.add_system(self.movement_system)
@@ -122,8 +133,8 @@ class RoguelikeGame:
         self.world.systems.add_system(self.throwing_system)
         self.world.systems.add_system(self.auto_explore_system)
         
-        # Game initialization
-        self._initialize_game()
+        # Note: Game initialization is now handled explicitly by caller
+        # Don't automatically initialize here to avoid conflicts with loading
     
     def _initialize_game(self) -> None:
         """Initialize the game world and player."""
@@ -177,6 +188,9 @@ class RoguelikeGame:
                 
                 # Check for game over (only quit if explicitly requested)
                 if self.game_state.is_game_over():
+                    # Handle permadeath - delete save file if player died
+                    if self.game_state.game_over_reason == "You died!":
+                        self.handle_player_death()
                     break
                 
                 # Check if auto-explore is active
@@ -209,6 +223,9 @@ class RoguelikeGame:
                         action_taken = self.input_system.handle_input(key)
                         
                         if action_taken:
+                            # Auto-save at the beginning of the turn (traditional roguelike style)
+                            self._auto_save()
+                            
                             # Process the player's action
                             self._process_player_action()
                             
@@ -288,6 +305,15 @@ class RoguelikeGame:
             self.action_handler.handle_travel_to_stairs_down(player_entity)
         elif action[0] == 'travel_to_stairs_up':
             self.action_handler.handle_travel_to_stairs_up(player_entity)
+        elif action[0] == 'enter_examine_mode':
+            self._handle_enter_examine_mode(player_entity)
+        elif action[0] == 'move_examine_cursor':
+            _, dx, dy = action
+            self._handle_move_examine_cursor(player_entity, dx, dy)
+        elif action[0] == 'examine_select':
+            self._handle_examine_select(player_entity)
+        elif action[0] == 'exit_examine_mode':
+            self._handle_exit_examine_mode(player_entity)
         elif action[0] == 'close_menus':
             self.render_system.hide_all_menus()
     
@@ -388,6 +414,129 @@ class RoguelikeGame:
         else:
             # No movement occurred, just request render for any state changes
             self.game_state.request_render()
+    
+    def _auto_save(self) -> None:
+        """Auto-save the game state at the beginning of each turn."""
+        try:
+            success = self.save_system.save_game(
+                self.world, 
+                self.game_state, 
+                self.message_log, 
+                self.camera, 
+                self.world_generator
+            )
+            if not success:
+                # Save failed, but don't interrupt gameplay
+                # Could add a subtle indicator or log message here
+                pass
+        except Exception as e:
+            # Save failed, but don't crash the game
+            print(f"Auto-save failed: {e}")
+    
+    def load_saved_game(self) -> bool:
+        """Load a saved game. Returns True if successful."""
+        save_data = self.save_system.load_game()
+        if not save_data:
+            return False
+        
+        try:
+            # Clear current game state
+            self._clear_current_game()
+            
+            # Restore the saved game
+            success = self.save_system.restore_game(
+                save_data,
+                self.world,
+                self.game_state,
+                self.message_log,
+                self.camera,
+                self.world_generator
+            )
+            
+            if success:
+                # Update systems that need to know about the restored state
+                self._post_load_setup()
+                return True
+            else:
+                # Restore failed, reinitialize fresh game
+                self._initialize_game()
+                return False
+                
+        except Exception as e:
+            print(f"Error loading saved game: {e}")
+            # Restore failed, reinitialize fresh game
+            self._initialize_game()
+            return False
+    
+    def _clear_current_game(self) -> None:
+        """Clear the current game state before loading."""
+        # Clear all entities from the world
+        entities_to_destroy = list(self.world.entities.get_alive_entities())
+        for entity_id in entities_to_destroy:
+            self.world.destroy_entity(entity_id)
+        
+        # Reset game state
+        self.game_state.reset()
+        
+        # Clear message log
+        self.message_log.clear()
+    
+    def _post_load_setup(self) -> None:
+        """Setup systems after loading a saved game."""
+        # Update camera bounds based on current level
+        current_level = self.game_state.get_current_level()
+        if current_level:
+            self.camera.set_level_bounds(current_level.width, current_level.height)
+        
+        # Update systems that reference the world generator
+        self.movement_system.world_generator = self.world_generator
+        self.fov_system.world_generator = self.world_generator
+        self.render_system.world_generator = self.world_generator
+        
+        # Calculate FOV for current player position
+        self.fov_system.update()
+        
+        # Invalidate render cache
+        self.render_system.invalidate_cache()
+        
+        # Request a render
+        self.game_state.request_render()
+    
+    def handle_player_death(self) -> None:
+        """Handle player death - delete save file for permadeath."""
+        self.save_system.delete_save_file()
+    
+    def _handle_enter_examine_mode(self, player_entity: int) -> None:
+        """Handle entering examine mode."""
+        if self.examine_system.start_examine_mode(player_entity):
+            # Set up examine menu
+            from systems.menus.examine_menu import ExamineMenu
+            examine_menu = ExamineMenu(self.world, self.examine_system)
+            self.render_system.menu_manager.set_examine_menu(examine_menu)
+            self.render_system.menu_manager.show_examine_menu()
+    
+    def _handle_move_examine_cursor(self, player_entity: int, dx: int, dy: int) -> None:
+        """Handle moving the examine cursor."""
+        self.examine_system.move_cursor(player_entity, dx, dy)
+        # Update examine menu content
+        if self.render_system.menu_manager.is_examine_active():
+            self.render_system.menu_manager.examine_menu.invalidate()
+    
+    def _handle_examine_select(self, player_entity: int) -> None:
+        """Handle selecting from examine list."""
+        examine_menu = self.render_system.menu_manager.examine_menu
+        if examine_menu and examine_menu.can_select_items():
+            selected_index = examine_menu.selected_index
+            if selected_index >= 0:
+                examine_menu.select_entity(selected_index)
+        elif examine_menu and examine_menu.is_showing_detail():
+            # Return to list view
+            examine_menu.return_to_list()
+    
+    def _handle_exit_examine_mode(self, player_entity: int) -> None:
+        """Handle exiting examine mode."""
+        self.examine_system.exit_examine_mode(player_entity)
+        self.render_system.hide_all_menus()
 
 
 def parse_arguments():
@@ -455,24 +604,40 @@ def list_available_charsets():
 
 def show_launcher_menu():
     """Show the game launcher menu and return user choice."""
+    # Check if a save file exists
+    save_system = SaveSystem()
+    has_save = save_system.has_save_file()
+    
     print("=" * 50)
     print("    BLESSED ROGUELIKE LAUNCHER")
     print("=" * 50)
     print()
-    print("1. New Game")
-    print("2. Dungeon Editor")
-    print("3. Exit")
-    print()
+    
+    if has_save:
+        print("1. New Game")
+        print("2. Continue Game")
+        print("3. Dungeon Editor")
+        print("4. Exit")
+        print()
+        valid_choices = ['1', '2', '3', '4']
+        max_choice = 4
+    else:
+        print("1. New Game")
+        print("2. Dungeon Editor")
+        print("3. Exit")
+        print()
+        valid_choices = ['1', '2', '3']
+        max_choice = 3
     
     while True:
         try:
-            choice = input("Select an option (1-3): ").strip()
-            if choice in ['1', '2', '3']:
-                return int(choice)
+            choice = input(f"Select an option (1-{max_choice}): ").strip()
+            if choice in valid_choices:
+                return int(choice), has_save
             else:
-                print("Invalid choice. Please enter 1, 2, or 3.")
+                print(f"Invalid choice. Please enter 1-{max_choice}.")
         except (EOFError, KeyboardInterrupt):
-            return 3  # Exit on Ctrl+C or EOF
+            return max_choice, has_save  # Exit on Ctrl+C or EOF
 
 
 def main():
@@ -501,12 +666,13 @@ def main():
         print()
     
     # Show launcher menu
-    choice = show_launcher_menu()
+    choice, has_save = show_launcher_menu()
     
     if choice == 1:
         # New Game
         try:
             game = RoguelikeGame(charset_override=charset_override)
+            game._initialize_game()  # Explicitly initialize for new games
             game.run()
         except Exception as e:
             print(f"Error starting game: {e}")
@@ -516,20 +682,60 @@ def main():
             sys.exit(1)
     
     elif choice == 2:
-        # Dungeon Editor
-        try:
-            from maps import MapPreviewTool
-            editor = MapPreviewTool(charset_override=charset_override)
-            editor.run()
-        except Exception as e:
-            print(f"Error starting dungeon editor: {e}")
-            if args.debug:
-                import traceback
-                traceback.print_exc()
-            sys.exit(1)
+        if has_save:
+            # Continue Game
+            try:
+                print("DEBUG: Creating RoguelikeGame instance...")
+                game = RoguelikeGame(charset_override=charset_override)
+                print("DEBUG: Attempting to load saved game...")
+                success = game.load_saved_game()
+                print(f"DEBUG: Load result: {success}")
+                if success:
+                    print("DEBUG: Load successful, starting game...")
+                    game.run()
+                else:
+                    print("Failed to load saved game. Starting new game instead.")
+                    game._initialize_game()  # Initialize new game if loading failed
+                    game.run()
+            except Exception as e:
+                print(f"Error loading saved game: {e}")
+                if args.debug:
+                    import traceback
+                    traceback.print_exc()
+                sys.exit(1)
+        else:
+            # Dungeon Editor (when no save exists)
+            try:
+                from maps import MapPreviewTool
+                editor = MapPreviewTool(charset_override=charset_override)
+                editor.run()
+            except Exception as e:
+                print(f"Error starting dungeon editor: {e}")
+                if args.debug:
+                    import traceback
+                    traceback.print_exc()
+                sys.exit(1)
     
     elif choice == 3:
-        # Exit
+        if has_save:
+            # Dungeon Editor (when save exists)
+            try:
+                from maps import MapPreviewTool
+                editor = MapPreviewTool(charset_override=charset_override)
+                editor.run()
+            except Exception as e:
+                print(f"Error starting dungeon editor: {e}")
+                if args.debug:
+                    import traceback
+                    traceback.print_exc()
+                sys.exit(1)
+        else:
+            # Exit (when no save exists)
+            print("Goodbye!")
+            return
+    
+    elif choice == 4:
+        # Exit (when save exists)
         print("Goodbye!")
         return
 

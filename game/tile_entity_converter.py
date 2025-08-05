@@ -35,17 +35,31 @@ class TileEntityConverter:
                 if tile and tile.tile_type in self.conversion_map:
                     tiles_to_convert.append((x, y, tile.tile_type))
         
-        # Convert each tile to an entity
+        # Create all entities first (without modifying tiles)
+        created_entities = []
         for x, y, tile_type in tiles_to_convert:
             entity_id = self.conversion_map[tile_type](x, y, tile_type, level)
             if entity_id:
-                level.add_entity(entity_id)
-                
-                # Set the underlying tile back to floor after entity creation
-                tile = level.get_tile(x, y)
-                if tile:
+                created_entities.append((entity_id, x, y, tile_type))
+        
+        # Now atomically add all entities and update tiles
+        for entity_id, x, y, original_tile_type in created_entities:
+            level.add_entity(entity_id)
+            
+            # Set the underlying tile back to floor after entity creation
+            # Get a fresh reference to the tile to ensure we're updating the right object
+            tile = level.get_tile(x, y)
+            if tile:
+                # Double-check that this tile still needs conversion
+                if tile.tile_type == original_tile_type:
                     tile.is_wall = False
                     tile.tile_type = 'floor'
+                    # Clear any special properties that might interfere
+                    if 'door' in tile.properties:
+                        del tile.properties['door']
+                else:
+                    # Log if we find a tile that was already converted
+                    print(f"Warning: Tile at ({x}, {y}) was already converted from {original_tile_type} to {tile.tile_type}")
     
     def _create_door_entity(self, x: int, y: int, tile_type: str, level: DungeonLevel) -> Optional[int]:
         """Create a door entity from a door tile."""

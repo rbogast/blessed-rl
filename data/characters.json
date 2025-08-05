@@ -13,7 +13,7 @@
       "constitution": 8,
       "intelligence": 3,
       "willpower": 6,
-      "aura": 2
+      "perception": 2
     }
   },
   "guard": {
@@ -30,7 +30,7 @@
       "constitution": 10,
       "intelligence": 8,
       "willpower": 8,
-      "aura": 6
+      "perception": 6
     }
   },
   "goliath": {
@@ -47,7 +47,7 @@
       "constitution": 14,
       "intelligence": 6,
       "willpower": 10,
-      "aura": 7
+      "perception": 7
     }
   },
   "cultist": {
@@ -64,7 +64,7 @@
       "constitution": 8,
       "intelligence": 12,
       "willpower": 10,
-      "aura": 9
+      "perception": 9
     }
   }
 }

@@ -62,8 +62,41 @@ class InputSystem(System):
                     # Ignore all other inputs when dead
                     return False
         
-        # Check if throwing mode is active first
-        if self._is_throwing_active():
+        # Check if examine mode is active first
+        if self._is_examine_active():
+            # In examine mode - handle cursor movement and selection
+            if key_str == '8':  # Numpad 8 - move cursor up
+                self._move_examine_cursor(0, -1)
+                return True
+            elif key_str == '2':  # Numpad 2 - move cursor down
+                self._move_examine_cursor(0, 1)
+                return True
+            elif key_str == '4':  # Numpad 4 - move cursor left
+                self._move_examine_cursor(-1, 0)
+                return True
+            elif key_str == '6':  # Numpad 6 - move cursor right
+                self._move_examine_cursor(1, 0)
+                return True
+            elif key_str == '7':  # Numpad 7 - move cursor up-left
+                self._move_examine_cursor(-1, -1)
+                return True
+            elif key_str == '9':  # Numpad 9 - move cursor up-right
+                self._move_examine_cursor(1, -1)
+                return True
+            elif key_str == '1':  # Numpad 1 - move cursor down-left
+                self._move_examine_cursor(-1, 1)
+                return True
+            elif key_str == '3':  # Numpad 3 - move cursor down-right
+                self._move_examine_cursor(1, 1)
+                return True
+            elif key_name == 'KEY_ENTER':  # Enter - select from list (if applicable)
+                self._examine_select()
+                return True
+            elif key == 'KEY_ESCAPE' or key == '\x1b':  # Escape - exit examine mode
+                self._exit_examine_mode()
+                return True
+        # Check if throwing mode is active
+        elif self._is_throwing_active():
             # In throwing mode - handle cursor movement and targeting
             if key_str == '8':  # Numpad 8 - move cursor up
                 self._move_throwing_cursor(0, -1)
@@ -150,6 +183,9 @@ class InputSystem(System):
             return True
         elif key.lower() == 'f':
             self._throwing_menu()
+            return True
+        elif key.lower() == 'x':
+            self._enter_examine_mode()
             return True
         elif key.lower() == 'z':
             self._toggle_auto_explore()
@@ -331,3 +367,30 @@ class InputSystem(System):
     def _travel_to_stairs_up(self) -> None:
         """Travel to upward stairs."""
         self.pending_action = ('travel_to_stairs_up',)
+    
+    def _is_examine_active(self) -> bool:
+        """Check if examine mode is currently active."""
+        player_entity = self.game_state.get_player_entity()
+        if not player_entity:
+            return False
+        
+        # Check if player has examine cursor component
+        from components.examine import ExamineCursor
+        return self.world.has_component(player_entity, ExamineCursor)
+    
+    def _enter_examine_mode(self) -> None:
+        """Enter examine mode."""
+        self.pending_action = ('enter_examine_mode',)
+    
+    def _move_examine_cursor(self, dx: int, dy: int) -> None:
+        """Move the examine cursor."""
+        self.pending_action = ('move_examine_cursor', dx, dy)
+        self.game_state.request_render()
+    
+    def _examine_select(self) -> None:
+        """Select from examine list (if applicable)."""
+        self.pending_action = ('examine_select',)
+    
+    def _exit_examine_mode(self) -> None:
+        """Exit examine mode."""
+        self.pending_action = ('exit_examine_mode',)

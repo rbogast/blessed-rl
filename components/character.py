@@ -9,18 +9,18 @@ class CharacterAttributes(Component):
     """Character attributes that affect various game mechanics."""
     
     def __init__(self, strength=10, agility=10, constitution=10, 
-                 intelligence=10, willpower=10, aura=10):
+                 intelligence=10, willpower=10, perception=10):
         self.strength = strength          # Affects damage and contributes to HP
         self.agility = agility            # Affects speed and dodge
         self.constitution = constitution  # Affects HP and vulnerability to physical debuffs
         self.intelligence = intelligence  # Affects aptitude for magic
         self.willpower = willpower        # Affects resistance to charm, intimidate
-        self.aura = aura                 # Presence. Can cause fear and debuffs in enemies, can attract and buff followers
+        self.perception = perception      # Awareness and ability to notice details, traps, and hidden things
     
     def get_total_attributes(self) -> int:
         """Get sum of all attributes for display purposes."""
         return (self.strength + self.agility + self.constitution + 
-                self.intelligence + self.willpower + self.aura)
+                self.intelligence + self.willpower + self.perception)
 
 
 class Experience(Component):
