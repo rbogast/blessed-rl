@@ -164,6 +164,11 @@ items:
     brightness: 2
     char: ";"
     color: "yellow"
+    physics:
+      mass: 1.0
+    throwable:
+      weight: 1.0
+      damage_modifier: 0.8
   
   lantern:
     name: "Lantern"
@@ -175,6 +180,11 @@ items:
     brightness: 3
     char: "ô"
     color: "yellow"
+    physics:
+      mass: 1.5
+    throwable:
+      weight: 1.5
+      damage_modifier: 1.0
   
   # Misc items
   persistence_artifact:

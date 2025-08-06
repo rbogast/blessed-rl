@@ -125,10 +125,12 @@ class ItemFactory:
         # Add LightEmitter component if item has fuel and brightness
         if 'fuel' in definition and 'brightness' in definition:
             from components.items import LightEmitter
+            # Start torches and lanterns as active by default
+            is_light_source = item_id in ['torch', 'lantern']
             light_component = LightEmitter(
                 brightness=definition.get('brightness', 1),
                 fuel=definition.get('fuel', 100),
-                active=False  # Start inactive, will be activated when equipped
+                active=is_light_source  # Start torches and lanterns active
             )
             self.world.add_component(entity_id, light_component)
         

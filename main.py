@@ -89,13 +89,17 @@ class RoguelikeGame:
         self.effects_manager.register_effect(BleedingEffect(self.status_effects_system))
         self.effects_manager.register_effect(BloodSplatterEffect(self.tile_effects_system))
         self.combat_system = CombatSystem(self.world, self.game_state, self.message_log, self.effects_manager, self.world_generator)
-        self.inventory_system = InventorySystem(self.world, self.message_log)
-        # Set render system reference for inventory menu invalidation
-        self.inventory_system.set_render_system(self.render_system)
         self.skills_system = SkillsSystem(self.world, self.message_log)
         self.ai_system = AISystem(self.world, self.movement_system, self.combat_system, self.message_log)
         self.lighting_system = LightingSystem(self.world, self.message_log)
         self.fov_system = FOVSystem(self.world, self.world_generator, message_log=self.message_log, lighting_system=self.lighting_system)
+        
+        # Initialize inventory system with FOV system reference
+        self.inventory_system = InventorySystem(self.world, self.message_log)
+        # Set render system and FOV system references
+        self.inventory_system.set_render_system(self.render_system)
+        self.inventory_system.set_fov_system(self.fov_system)
+        
         self.throwing_system = ThrowingSystem(self.world, self.movement_system, self.fov_system, 
                                             self.physics_system, self.skills_system, self.message_log)
         
@@ -318,6 +322,12 @@ class RoguelikeGame:
             self._handle_exit_examine_mode(player_entity)
         elif action[0] == 'close_menus':
             self.render_system.hide_all_menus()
+        elif action[0] == 'show_interactive_inventory':
+            self.action_handler.handle_show_interactive_inventory(player_entity)
+        elif action[0] == 'interactive_inventory_select':
+            self.action_handler.handle_interactive_inventory_selection(player_entity)
+        elif action[0] == 'item_examination_select':
+            self.action_handler.handle_item_examination_selection(player_entity)
     
     
     def _restart_game(self) -> None:

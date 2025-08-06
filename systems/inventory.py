@@ -17,10 +17,15 @@ class InventorySystem(System):
         super().__init__(world)
         self.message_log = message_log
         self.render_system = None  # Will be set by the main game
+        self.fov_system = None  # Will be set by the main game
     
     def set_render_system(self, render_system):
         """Set the render system reference for menu invalidation."""
         self.render_system = render_system
+    
+    def set_fov_system(self, fov_system):
+        """Set the FOV system reference for lighting recalculation."""
+        self.fov_system = fov_system
     
     def _invalidate_inventory_menu(self):
         """Invalidate the inventory menu cache to force refresh."""
@@ -100,10 +105,19 @@ class InventorySystem(System):
         if not inventory or not position:
             return False
         
+        # Check if this is an active light source before dropping
+        from components.items import LightEmitter
+        light = self.world.get_component(item_entity_id, LightEmitter)
+        is_active_light = light and light.active
+        
         # Remove from inventory
         if inventory.remove_item(item_entity_id):
             # Place item at entity's position
             self.world.add_component(item_entity_id, Position(position.x, position.y))
+            
+            # Force FOV recalculation if dropping an active light source
+            if is_active_light and self.fov_system:
+                self.fov_system.force_recalculation()
             
             # Get item name for message
             item = self.world.get_component(item_entity_id, Item)
@@ -153,7 +167,11 @@ class InventorySystem(System):
             self._handle_light_deactivation(previous_item)
         
         # Activate light if the newly equipped item is a light source
-        self._handle_light_activation(item_entity_id)
+        light_activated = self._handle_light_activation(item_entity_id)
+        
+        # Force FOV recalculation if a light source was equipped
+        if light_activated and self.fov_system:
+            self.fov_system.force_recalculation()
         
         # Get item name for message
         item = self.world.get_component(item_entity_id, Item)
@@ -188,7 +206,11 @@ class InventorySystem(System):
             inventory.add_item(unequipped_item)
             
             # Deactivate light if the unequipped item was a light source
-            self._handle_light_deactivation(unequipped_item)
+            light_deactivated = self._handle_light_deactivation(unequipped_item)
+            
+            # Force FOV recalculation if a light source was unequipped
+            if light_deactivated and self.fov_system:
+                self.fov_system.force_recalculation()
             
             # Get item name for message
             item = self.world.get_component(unequipped_item, Item)
@@ -328,26 +350,31 @@ class InventorySystem(System):
             'attributes': total_attributes
         }
     
-    def _handle_light_activation(self, item_entity_id: int) -> None:
-        """Activate a light source if it has a LightEmitter component."""
+    def _handle_light_activation(self, item_entity_id: int) -> bool:
+        """Activate a light source if it has a LightEmitter component. Returns True if a light was activated."""
         from components.items import LightEmitter
         light = self.world.get_component(item_entity_id, LightEmitter)
         if light and light.fuel > 0:
+            was_inactive = not light.active
             light.active = True
             # Get item name for message
             item = self.world.get_component(item_entity_id, Item)
-            if item and self.message_log:
+            if item and self.message_log and was_inactive:
                 self.message_log.add_info(f"The {item.name} flickers to life!")
+            return was_inactive  # Return True if we actually activated a light
         elif light and light.fuel <= 0:
             light.active = False
             # Get item name for message
             item = self.world.get_component(item_entity_id, Item)
             if item and self.message_log:
                 self.message_log.add_warning(f"The {item.name} has no fuel and remains dark.")
+        return False
     
-    def _handle_light_deactivation(self, item_entity_id: int) -> None:
-        """Deactivate a light source if it has a LightEmitter component."""
+    def _handle_light_deactivation(self, item_entity_id: int) -> bool:
+        """Deactivate a light source if it has a LightEmitter component. Returns True if a light was deactivated."""
         from components.items import LightEmitter
         light = self.world.get_component(item_entity_id, LightEmitter)
-        if light:
+        if light and light.active:
             light.active = False
+            return True  # Return True if we actually deactivated a light
+        return False

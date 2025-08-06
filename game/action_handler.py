@@ -296,3 +296,137 @@ class ActionHandler:
             return
         
         self.auto_explore_system.travel_to_stairs_up(player_entity)
+    
+    def handle_show_interactive_inventory(self, player_entity: int) -> None:
+        """Handle showing the interactive inventory menu."""
+        inventory = self.world.get_component(player_entity, Inventory)
+        if not inventory:
+            self.message_log.add_warning("You have no inventory.")
+            return
+        
+        if not inventory.items:
+            self.message_log.add_warning("Your inventory is empty.")
+            return
+        
+        # Show the interactive inventory menu
+        self.render_system.menu_manager.show_interactive_inventory()
+        self.game_state.request_render()
+    
+    def handle_interactive_inventory_selection(self, player_entity: int) -> None:
+        """Handle selection from the interactive inventory menu."""
+        menu_manager = self.render_system.menu_manager
+        
+        if not menu_manager.is_interactive_inventory_active():
+            return
+        
+        # Get the selected item
+        selected_item_id = menu_manager.get_selected_inventory_item(player_entity)
+        if selected_item_id is None:
+            self.message_log.add_warning("No item selected.")
+            return
+        
+        # Show the item examination menu
+        menu_manager.show_item_examination(selected_item_id, player_entity)
+        self.game_state.request_render()
+    
+    def handle_item_examination_selection(self, player_entity: int) -> None:
+        """Handle selection from the item examination menu."""
+        menu_manager = self.render_system.menu_manager
+        
+        if not menu_manager.is_item_examination_active():
+            return
+        
+        examination_menu = menu_manager.menus['item_examination']
+        
+        # Check if we're showing the description or the actions
+        if not examination_menu.show_actions:
+            # Currently showing description, switch to actions
+            menu_manager.show_examination_actions()
+            self.game_state.request_render()
+        else:
+            # Currently showing actions, execute the selected action
+            selected_action = menu_manager.get_selected_examination_action()
+            if selected_action:
+                self._execute_item_action(player_entity, examination_menu.examined_item_id, selected_action)
+    
+    def _execute_item_action(self, player_entity: int, item_entity_id: int, action: str) -> None:
+        """Execute the selected action on an item."""
+        if action == "Drop":
+            success = self.inventory_system.drop_item(player_entity, item_entity_id)
+            if success:
+                # Add dropped item to current level's entity list
+                current_level = self.game_state.get_current_level()
+                if current_level:
+                    current_level.add_entity(item_entity_id)
+                # Invalidate render cache since item was added to world
+                self.render_system.invalidate_cache()
+                self.render_system.hide_all_menus()
+        
+        elif action == "Equip":
+            success = self.inventory_system.equip_item(player_entity, item_entity_id)
+            if success:
+                self.render_system.hide_all_menus()
+            else:
+                self.message_log.add_warning("Cannot equip that item.")
+        
+        elif action == "Unequip":
+            # Find which slot this item is equipped in
+            from components.items import EquipmentSlots
+            equipment_slots = self.world.get_component(player_entity, EquipmentSlots)
+            if equipment_slots:
+                equipped_items = equipment_slots.get_equipped_items()
+                for slot, equipped_item_id in equipped_items.items():
+                    if equipped_item_id == item_entity_id:
+                        success = self.inventory_system.unequip_item(player_entity, slot)
+                        if success:
+                            self.render_system.hide_all_menus()
+                        else:
+                            self.message_log.add_warning("Cannot unequip that item.")
+                        return
+                self.message_log.add_warning("Item is not equipped.")
+        
+        elif action == "Use":
+            success = self.inventory_system.use_consumable(player_entity, item_entity_id)
+            if success:
+                self.render_system.hide_all_menus()
+        
+        elif action == "Light":
+            self._handle_light_action(item_entity_id, True)
+            self.render_system.hide_all_menus()
+        
+        elif action == "Extinguish":
+            self._handle_light_action(item_entity_id, False)
+            self.render_system.hide_all_menus()
+        
+        elif action == "Throw":
+            # Start throwing with the selected item
+            success = self.throwing_system.start_throwing(player_entity, item_entity_id)
+            if success:
+                self.render_system.hide_all_menus()
+                # Request render to show the targeting cursor
+                self.game_state.request_render()
+            else:
+                self.message_log.add_warning("Cannot throw that item.")
+        
+        else:
+            self.message_log.add_warning(f"Unknown action: {action}")
+    
+    def _handle_light_action(self, item_entity_id: int, activate: bool) -> None:
+        """Handle lighting or extinguishing a light source."""
+        from components.items import LightEmitter, Item
+        
+        light = self.world.get_component(item_entity_id, LightEmitter)
+        item = self.world.get_component(item_entity_id, Item)
+        
+        if not light or not item:
+            return
+        
+        if activate:
+            if light.fuel > 0:
+                light.active = True
+                self.message_log.add_info(f"You light the {item.name}.")
+            else:
+                self.message_log.add_warning(f"The {item.name} has no fuel.")
+        else:
+            light.active = False
+            self.message_log.add_info(f"You extinguish the {item.name}.")

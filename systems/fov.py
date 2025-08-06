@@ -176,13 +176,17 @@ class FOVSystem(System):
         
         # Calculate lighting and penumbra separately if lighting system is available
         if self.lighting_system:
-            light_radius = self.lighting_system.get_player_light_radius(player_entity)
-            if light_radius > 0:
+            # Calculate lighting from player's equipped light sources
+            player_light_radius = self.lighting_system.get_player_equipped_light_radius(player_entity)
+            if player_light_radius > 0:
                 # Calculate lit tiles (inner radius)
-                self._calculate_lighting(player_pos.x, player_pos.y, light_radius)
+                self._calculate_lighting(player_pos.x, player_pos.y, player_light_radius)
                 # Calculate penumbra tiles (outer radius = 2x light radius)
-                penumbra_radius = light_radius * 2
-                self._calculate_penumbra(player_pos.x, player_pos.y, light_radius, penumbra_radius)
+                penumbra_radius = player_light_radius * 2
+                self._calculate_penumbra(player_pos.x, player_pos.y, player_light_radius, penumbra_radius)
+            
+            # Calculate lighting from all world light sources
+            self._calculate_world_lighting()
     
     def _cast_light(self, cx: int, cy: int, row: int, start: float, end: float,
                    xx: int, xy: int, yx: int, yy: int) -> None:
@@ -487,3 +491,23 @@ class FOVSystem(System):
         """Check if a position is currently in penumbra."""
         tile = self.world_generator.get_tile_at(x, y)
         return tile and getattr(tile, 'penumbra', False)
+    
+    def _calculate_world_lighting(self) -> None:
+        """Calculate lighting from all active light sources in the world."""
+        if not self.lighting_system:
+            return
+        
+        # Get all world light sources
+        world_lights = self.lighting_system.get_all_world_light_sources()
+        
+        for light_source in world_lights:
+            cx = light_source['x']
+            cy = light_source['y']
+            brightness = light_source['brightness']
+            
+            # Calculate lighting for this light source
+            self._calculate_lighting(cx, cy, brightness)
+            
+            # Calculate penumbra for this light source
+            penumbra_radius = brightness * 2
+            self._calculate_penumbra(cx, cy, brightness, penumbra_radius)

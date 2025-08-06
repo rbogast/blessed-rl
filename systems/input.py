@@ -161,6 +161,9 @@ class InputSystem(System):
             self._restart_game()
             return True
         elif key.lower() == 'i':
+            self._show_interactive_inventory()
+            return True
+        elif key.lower() == 'v':
             self._toggle_inventory()
             return True
         elif key.lower() == 'g':
@@ -321,6 +324,19 @@ class InputSystem(System):
     def _select_highlighted_item(self) -> None:
         """Select the currently highlighted menu item."""
         if self.render_system:
+            menu_manager = self.render_system.menu_manager
+            
+            # Handle interactive inventory menu
+            if menu_manager.is_interactive_inventory_active():
+                self.pending_action = ('interactive_inventory_select',)
+                return
+            
+            # Handle item examination menu
+            if menu_manager.is_item_examination_active():
+                self.pending_action = ('item_examination_select',)
+                return
+            
+            # Handle other menus with numbered selection
             selected_item = self.render_system.get_selected_menu_item()
             if selected_item > 0:
                 self._select_item(selected_item)
@@ -394,3 +410,7 @@ class InputSystem(System):
     def _exit_examine_mode(self) -> None:
         """Exit examine mode."""
         self.pending_action = ('exit_examine_mode',)
+    
+    def _show_interactive_inventory(self) -> None:
+        """Show the interactive inventory menu."""
+        self.pending_action = ('show_interactive_inventory',)

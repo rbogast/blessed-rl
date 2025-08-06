@@ -114,6 +114,8 @@ class MenuManager:
         
         # Import menu types here to avoid circular imports
         from systems.menus.inventory_menu import InventoryMenu
+        from systems.menus.interactive_inventory_menu import InteractiveInventoryMenu
+        from systems.menus.item_examination_menu import ItemExaminationMenu
         from systems.menus.equip_menu import EquipMenu
         from systems.menus.use_menu import UseMenu
         from systems.menus.drop_menu import DropMenu
@@ -121,6 +123,8 @@ class MenuManager:
         
         self.menus = {
             'inventory': InventoryMenu(world),
+            'interactive_inventory': InteractiveInventoryMenu(world),
+            'item_examination': ItemExaminationMenu(world),
             'equip': EquipMenu(world),
             'use': UseMenu(world),
             'drop': DropMenu(world),
@@ -193,3 +197,41 @@ class MenuManager:
         elif self.show_inventory:
             return self.menus['inventory'].get_menu_line(line_num, player_entity)
         return "", False
+    
+    def show_interactive_inventory(self) -> None:
+        """Show the interactive inventory menu."""
+        self.active_menu = self.menus['interactive_inventory']
+        self.active_menu.reset()
+        self.show_inventory = False
+    
+    def show_item_examination(self, item_entity_id: int, player_entity: int) -> None:
+        """Show the item examination menu for a specific item."""
+        examination_menu = self.menus['item_examination']
+        examination_menu.set_examined_item(item_entity_id, player_entity)
+        self.active_menu = examination_menu
+        self.show_inventory = False
+    
+    def get_selected_inventory_item(self, player_entity: int) -> int:
+        """Get the entity ID of the currently selected inventory item."""
+        if self.active_menu == self.menus['interactive_inventory']:
+            return self.active_menu.get_selected_item_entity_id(player_entity)
+        return None
+    
+    def get_selected_examination_action(self) -> str:
+        """Get the currently selected action from the item examination menu."""
+        if self.active_menu == self.menus['item_examination']:
+            return self.active_menu.get_selected_action()
+        return None
+    
+    def show_examination_actions(self) -> None:
+        """Switch the item examination menu to show actions."""
+        if self.active_menu == self.menus['item_examination']:
+            self.active_menu.show_action_menu()
+    
+    def is_interactive_inventory_active(self) -> bool:
+        """Check if interactive inventory menu is currently active."""
+        return self.active_menu == self.menus['interactive_inventory']
+    
+    def is_item_examination_active(self) -> bool:
+        """Check if item examination menu is currently active."""
+        return self.active_menu == self.menus['item_examination']
