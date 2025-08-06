@@ -81,7 +81,7 @@ class GlyphConfig:
             print(f"Character set: {self.character_set}")
             print(f"Unicode support: {platform_info['supports_unicode']}")
     
-    def get_terrain_glyph(self, terrain_type: str, visible: bool = True, lit: bool = True) -> Tuple[str, str]:
+    def get_terrain_glyph(self, terrain_type: str, visible: bool = True, lit: bool = True, penumbra: bool = False) -> Tuple[str, str]:
         """
         Get terrain glyph and color.
         
@@ -89,6 +89,7 @@ class GlyphConfig:
             terrain_type: Type of terrain ('floor', 'wall', etc.)
             visible: Whether the terrain is currently visible
             lit: Whether the terrain is currently lit (only matters if visible)
+            penumbra: Whether the terrain is in penumbra (only matters if visible and not lit)
             
         Returns:
             Tuple of (character, color)
@@ -105,8 +106,11 @@ class GlyphConfig:
         if visible:
             if lit:
                 color = terrain_config.get("visible_color", "white")
+            elif penumbra:
+                color = terrain_config.get("visible_penumbra_color", "blue")
             else:
-                color = terrain_config.get("visible_unlit_color", "blue")
+                # Visible but not lit and not penumbra = outside light radius, treat as explored
+                color = terrain_config.get("explored_color", "bright_black")
         else:
             color = terrain_config.get("explored_color", "bright_black")
         

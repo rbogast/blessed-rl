@@ -26,6 +26,7 @@ class FOVSystem(System):
         self.message_log = message_log  # For discovery messages
         self.lighting_system = lighting_system  # Reference to lighting system
         self.previously_lit_tiles = set()  # Track previously lit tiles
+        self.previously_penumbra_tiles = set()  # Track previously penumbra tiles
         
         # Octant multipliers for the 8 directions
         self.octant_multipliers = [
@@ -131,17 +132,13 @@ class FOVSystem(System):
         if not player_pos:
             return
         
-        # Get dynamic sight radius based on equipped light sources
-        if self.lighting_system:
-            dynamic_sight_radius = self.lighting_system.get_player_sight_radius(player_entity)
-            # Use at least 1 tile of sight even without light
-            self.current_sight_radius = max(1, dynamic_sight_radius)
-        else:
-            self.current_sight_radius = self.sight_radius
+        # Use fixed large sight radius for line of sight (independent of light sources)
+        self.current_sight_radius = self.sight_radius
         
         # Clear tile visibility and lighting in world generator
         self._clear_tile_visibility(player_pos.x, player_pos.y)
         self._clear_tile_lighting(player_pos.x, player_pos.y)
+        self._clear_tile_penumbra(player_pos.x, player_pos.y)
         
         # Clear entity visibility and build position cache
         self.entity_position_cache = {}
@@ -160,7 +157,11 @@ class FOVSystem(System):
         player_visible = self.world.get_component(player_entity, Visible)
         if player_visible:
             player_visible.visible = True
-            player_visible.explored = True
+            # Only mark as explored if within light radius
+            if self.lighting_system:
+                light_radius = self.lighting_system.get_player_light_radius(player_entity)
+                if light_radius > 0:
+                    player_visible.explored = True
         
         # Mark player tile as visible (use _set_visible to track it)
         self._set_visible(player_pos.x, player_pos.y)
@@ -173,11 +174,15 @@ class FOVSystem(System):
                            self.octant_multipliers[2][octant],
                            self.octant_multipliers[3][octant])
         
-        # Calculate lighting separately if lighting system is available
+        # Calculate lighting and penumbra separately if lighting system is available
         if self.lighting_system:
             light_radius = self.lighting_system.get_player_light_radius(player_entity)
             if light_radius > 0:
+                # Calculate lit tiles (inner radius)
                 self._calculate_lighting(player_pos.x, player_pos.y, light_radius)
+                # Calculate penumbra tiles (outer radius = 2x light radius)
+                penumbra_radius = light_radius * 2
+                self._calculate_penumbra(player_pos.x, player_pos.y, light_radius, penumbra_radius)
     
     def _cast_light(self, cx: int, cy: int, row: int, start: float, end: float,
                    xx: int, xy: int, yx: int, yy: int) -> None:
@@ -276,19 +281,20 @@ class FOVSystem(System):
         return False
     
     def _set_visible(self, x: int, y: int) -> None:
-        """Mark a position as visible and explored."""
+        """Mark a position as visible (but not necessarily explored)."""
         # Track this tile as visible for next clearing
         self.previously_visible_tiles.add((x, y))
         
-        # Mark the tile as explored in the world generator
+        # Mark the tile as visible in the world generator
         tile = self.world_generator.get_tile_at(x, y)
         if tile:
             was_explored = tile.explored
             tile.visible = True
-            tile.explored = True
+            # Don't automatically mark as explored - that happens only with lighting
             
             # Check if this tile should become interesting (first time seeing stairs/items)
-            if not was_explored:
+            # Only if it was already explored (so we don't interrupt for things we can't reach)
+            if was_explored and not tile.interesting:
                 self._check_and_mark_tile_interesting(x, y, tile)
         
         # Mark any entities at this position as visible using cache
@@ -297,7 +303,7 @@ class FOVSystem(System):
             visible = self.world.get_component(entity_id, Visible)
             if visible:
                 visible.visible = True
-                visible.explored = True
+                # Don't automatically mark entities as explored either
     
     def is_visible(self, x: int, y: int) -> bool:
         """Check if a position is currently visible."""
@@ -399,16 +405,85 @@ class FOVSystem(System):
                         self._set_lit(light_x, light_y)
     
     def _set_lit(self, x: int, y: int) -> None:
-        """Mark a position as lit."""
+        """Mark a position as lit and explored."""
         # Track this tile as lit for next clearing
         self.previously_lit_tiles.add((x, y))
         
-        # Mark the tile as lit in the world generator
+        # Mark the tile as lit and explored in the world generator
         tile = self.world_generator.get_tile_at(x, y)
         if tile:
+            was_explored = tile.explored
             tile.lit = True
+            tile.explored = True
+            
+            # Check if this tile should become interesting (first time exploring)
+            if not was_explored:
+                self._check_and_mark_tile_interesting(x, y, tile)
+        
+        # Mark any entities at this position as explored using cache
+        entity_id = self.entity_position_cache.get((x, y))
+        if entity_id:
+            visible = self.world.get_component(entity_id, Visible)
+            if visible:
+                visible.explored = True
     
     def is_lit(self, x: int, y: int) -> bool:
         """Check if a position is currently lit."""
         tile = self.world_generator.get_tile_at(x, y)
         return tile and getattr(tile, 'lit', False)
+    
+    def _clear_tile_penumbra(self, player_x: int, player_y: int) -> None:
+        """Clear tile penumbra for previously penumbra tiles."""
+        # Clear all previously penumbra tiles
+        for x, y in self.previously_penumbra_tiles:
+            tile = self.world_generator.get_tile_at(x, y)
+            if tile:
+                tile.penumbra = False
+        
+        # Reset the set for this penumbra calculation
+        self.previously_penumbra_tiles.clear()
+    
+    def _calculate_penumbra(self, cx: int, cy: int, light_radius: int, penumbra_radius: int) -> None:
+        """Calculate penumbra using circular radius (outer ring around lit area)."""
+        # Calculate penumbra - check all positions within penumbra radius but outside light radius
+        for dx in range(-penumbra_radius, penumbra_radius + 1):
+            for dy in range(-penumbra_radius, penumbra_radius + 1):
+                # Check if within penumbra radius
+                distance_squared = dx * dx + dy * dy
+                if distance_squared <= penumbra_radius * penumbra_radius:
+                    # But not within light radius (those are already lit)
+                    if distance_squared > light_radius * light_radius:
+                        penumbra_x = cx + dx
+                        penumbra_y = cy + dy
+                        
+                        # Only mark penumbra for tiles that are visible (within FOV)
+                        if self.is_visible(penumbra_x, penumbra_y):
+                            self._set_penumbra(penumbra_x, penumbra_y)
+    
+    def _set_penumbra(self, x: int, y: int) -> None:
+        """Mark a position as penumbra and explored."""
+        # Track this tile as penumbra for next clearing
+        self.previously_penumbra_tiles.add((x, y))
+        
+        # Mark the tile as penumbra and explored in the world generator
+        tile = self.world_generator.get_tile_at(x, y)
+        if tile:
+            was_explored = tile.explored
+            tile.penumbra = True
+            tile.explored = True
+            
+            # Check if this tile should become interesting (first time exploring)
+            if not was_explored:
+                self._check_and_mark_tile_interesting(x, y, tile)
+        
+        # Mark any entities at this position as explored using cache
+        entity_id = self.entity_position_cache.get((x, y))
+        if entity_id:
+            visible = self.world.get_component(entity_id, Visible)
+            if visible:
+                visible.explored = True
+    
+    def is_penumbra(self, x: int, y: int) -> bool:
+        """Check if a position is currently in penumbra."""
+        tile = self.world_generator.get_tile_at(x, y)
+        return tile and getattr(tile, 'penumbra', False)

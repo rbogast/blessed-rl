@@ -82,13 +82,17 @@ class TileRenderer:
         if entity_char:
             # Show entity with appropriate color based on visibility and lighting
             if tile.visible:
-                # Check if tile is lit
+                # Check if tile is lit or in penumbra
                 is_lit = getattr(tile, 'lit', False)
+                is_penumbra = getattr(tile, 'penumbra', False)
                 if is_lit:
                     return entity_char, entity_color
-                else:
-                    # Visible but unlit - show in blue
+                elif is_penumbra:
+                    # Visible and in penumbra - show in blue
                     return entity_char, 'blue'
+                else:
+                    # Visible but outside penumbra - show in explored color (gray)
+                    return entity_char, GameConfig.EXPLORED_TILE_COLOR
             else:
                 # Entity is out of FOV - show same character in explored color
                 return entity_char, GameConfig.EXPLORED_TILE_COLOR
@@ -96,7 +100,8 @@ class TileRenderer:
             # No entity - render terrain
             # Get the terrain glyph based on tile type and lighting
             is_lit = getattr(tile, 'lit', False)  # Check if tile has lit attribute
-            terrain_char, terrain_color = self.glyph_config.get_terrain_glyph(tile.tile_type, tile.visible, is_lit)
+            is_penumbra = getattr(tile, 'penumbra', False)  # Check if tile has penumbra attribute
+            terrain_char, terrain_color = self.glyph_config.get_terrain_glyph(tile.tile_type, tile.visible, is_lit, is_penumbra)
             
             # Check if this tile is bloody (level-based blood overlay system)
             blood_tiles = set()
@@ -109,8 +114,10 @@ class TileRenderer:
                     # Check if tile is lit
                     if is_lit:
                         return terrain_char, 'red'  # Lit blood is red
+                    elif is_penumbra:
+                        return terrain_char, 'blue'  # Penumbra blood is blue
                     else:
-                        return terrain_char, 'blue'  # Unlit blood is blue (like other unlit tiles)
+                        return terrain_char, GameConfig.EXPLORED_TILE_COLOR  # Outside penumbra blood is gray
                 else:
                     # Out of FOV - show blood in same color as other explored tiles
                     return terrain_char, GameConfig.EXPLORED_TILE_COLOR
@@ -126,13 +133,17 @@ class TileRenderer:
         if entity_char:
             # Show entity with appropriate color based on visibility and lighting
             if tile.visible:
-                # Check if tile is lit
+                # Check if tile is lit or in penumbra
                 is_lit = getattr(tile, 'lit', False)
+                is_penumbra = getattr(tile, 'penumbra', False)
                 if is_lit:
                     return entity_char, entity_color
-                else:
-                    # Visible but unlit - show in blue
+                elif is_penumbra:
+                    # Visible and in penumbra - show in blue
                     return entity_char, 'blue'
+                else:
+                    # Visible but outside penumbra - show in explored color (gray)
+                    return entity_char, GameConfig.EXPLORED_TILE_COLOR
             else:
                 # Entity is out of FOV - show same character in explored color
                 return entity_char, GameConfig.EXPLORED_TILE_COLOR
@@ -140,7 +151,8 @@ class TileRenderer:
             # No entity - render terrain
             # Get the terrain glyph based on tile type and lighting
             is_lit = getattr(tile, 'lit', False)  # Check if tile has lit attribute
-            terrain_char, terrain_color = self.glyph_config.get_terrain_glyph(tile.tile_type, tile.visible, is_lit)
+            is_penumbra = getattr(tile, 'penumbra', False)  # Check if tile has penumbra attribute
+            terrain_char, terrain_color = self.glyph_config.get_terrain_glyph(tile.tile_type, tile.visible, is_lit, is_penumbra)
             
             # Check if this tile is bloody (level-based blood overlay system)
             blood_tiles = set()
@@ -153,8 +165,10 @@ class TileRenderer:
                     # Check if tile is lit
                     if is_lit:
                         return terrain_char, 'red'  # Lit blood is red
+                    elif is_penumbra:
+                        return terrain_char, 'blue'  # Penumbra blood is blue
                     else:
-                        return terrain_char, 'blue'  # Unlit blood is blue (like other unlit tiles)
+                        return terrain_char, GameConfig.EXPLORED_TILE_COLOR  # Outside penumbra blood is gray
                 else:
                     # Out of FOV - show blood in same color as other explored tiles
                     return terrain_char, GameConfig.EXPLORED_TILE_COLOR

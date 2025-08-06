@@ -33,6 +33,7 @@ class Tile:
         self.visible = False
         self.explored = False
         self.lit = False  # For lighting system: whether tile is currently lit
+        self.penumbra = False  # For lighting system: whether tile is in penumbra (outer light ring)
         self.interesting = False  # For auto-explore: contains items, stairs, etc.
         self.tile_type = 'wall' if is_wall else 'floor'
         self.properties: Dict[str, Any] = {}
