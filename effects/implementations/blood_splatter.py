@@ -40,5 +40,5 @@ class BloodSplatterEffect:
         for tile_x, tile_y in splatter_tiles:
             # Check if the tile exists and is valid
             tile = world_generator.get_tile_at(tile_x, tile_y)
-            if tile and not tile.is_wall:  # Only splatter on floor tiles
+            if tile:  # Allow blood on both floor and wall tiles
                 world_generator.add_blood_tile(tile_x, tile_y)

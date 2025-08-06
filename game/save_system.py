@@ -464,7 +464,7 @@ class SaveSystem:
         from components.combat import Health, Stats
         from components.character import CharacterAttributes, Experience, XPValue
         from components.effects import Physics, StatusEffect, TileModification, WeaponEffects
-        from components.items import Inventory, EquipmentSlots, Item, Equipment, Consumable, Pickupable, Throwable
+        from components.items import Inventory, EquipmentSlots, Item, Equipment, Consumable, Pickupable, Throwable, LightEmitter
         from components.corpse import Species, Corpse, Disposition
         from components.skills import Skills
         from components.ai import AI
@@ -496,6 +496,7 @@ class SaveSystem:
             'Consumable': Consumable,
             'Pickupable': Pickupable,
             'Throwable': Throwable,
+            'LightEmitter': LightEmitter,
             'Species': Species,
             'Corpse': Corpse,
             'Disposition': Disposition,

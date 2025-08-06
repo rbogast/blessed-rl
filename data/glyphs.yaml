@@ -8,48 +8,56 @@ terrain:
     ascii: "."
     cp437: "·"  # Code page 437 (DOS/Windows)
     visible_color: "white"
+    visible_unlit_color: "blue"
     explored_color: "blue"
   wall:
     unicode: "▒"
     ascii: "#"
     cp437: "▒"
     visible_color: "yellow"
+    visible_unlit_color: "blue"
     explored_color: "blue"
   door_closed:
     unicode: "+"
     ascii: "+"
     cp437: "+"
     visible_color: "brown"
+    visible_unlit_color: "blue"
     explored_color: "blue"
   door_open:
     unicode: "/"
     ascii: "/"
     cp437: "/"
     visible_color: "brown"
+    visible_unlit_color: "blue"
     explored_color: "blue"
   stairs_down:
     unicode: ">"
     ascii: ">"
     cp437: ">"
     visible_color: "white"
+    visible_unlit_color: "blue"
     explored_color: "blue"
   stairs_up:
     unicode: "<"
     ascii: "<"
     cp437: "<"
     visible_color: "white"
+    visible_unlit_color: "blue"
     explored_color: "blue"
   pine_tree:
     unicode: "♠"
     ascii: "P"
     cp437: "♠"
     visible_color: "green"
+    visible_unlit_color: "blue"
     explored_color: "blue"
   oak_tree:
     unicode: "♣"
     ascii: "&"
     cp437: "♣"
     visible_color: "green"
+    visible_unlit_color: "blue"
     explored_color: "blue"
 
 entities:

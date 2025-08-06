@@ -122,6 +122,16 @@ class ItemFactory:
             )
             self.world.add_component(entity_id, throwable_component)
         
+        # Add LightEmitter component if item has fuel and brightness
+        if 'fuel' in definition and 'brightness' in definition:
+            from components.items import LightEmitter
+            light_component = LightEmitter(
+                brightness=definition.get('brightness', 1),
+                fuel=definition.get('fuel', 100),
+                active=False  # Start inactive, will be activated when equipped
+            )
+            self.world.add_component(entity_id, light_component)
+        
         # Add Position component if coordinates provided
         if x is not None and y is not None:
             from components.core import Position

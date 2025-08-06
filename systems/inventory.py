@@ -149,6 +149,11 @@ class InventorySystem(System):
         # If there was a previously equipped item, put it back in inventory
         if previous_item:
             inventory.add_item(previous_item)
+            # Deactivate light if the previous item was a light source
+            self._handle_light_deactivation(previous_item)
+        
+        # Activate light if the newly equipped item is a light source
+        self._handle_light_activation(item_entity_id)
         
         # Get item name for message
         item = self.world.get_component(item_entity_id, Item)
@@ -181,6 +186,9 @@ class InventorySystem(System):
         if unequipped_item:
             # Add the unequipped item back to inventory
             inventory.add_item(unequipped_item)
+            
+            # Deactivate light if the unequipped item was a light source
+            self._handle_light_deactivation(unequipped_item)
             
             # Get item name for message
             item = self.world.get_component(unequipped_item, Item)
@@ -319,3 +327,27 @@ class InventorySystem(System):
             'defense': total_defense,
             'attributes': total_attributes
         }
+    
+    def _handle_light_activation(self, item_entity_id: int) -> None:
+        """Activate a light source if it has a LightEmitter component."""
+        from components.items import LightEmitter
+        light = self.world.get_component(item_entity_id, LightEmitter)
+        if light and light.fuel > 0:
+            light.active = True
+            # Get item name for message
+            item = self.world.get_component(item_entity_id, Item)
+            if item and self.message_log:
+                self.message_log.add_info(f"The {item.name} flickers to life!")
+        elif light and light.fuel <= 0:
+            light.active = False
+            # Get item name for message
+            item = self.world.get_component(item_entity_id, Item)
+            if item and self.message_log:
+                self.message_log.add_warning(f"The {item.name} has no fuel and remains dark.")
+    
+    def _handle_light_deactivation(self, item_entity_id: int) -> None:
+        """Deactivate a light source if it has a LightEmitter component."""
+        from components.items import LightEmitter
+        light = self.world.get_component(item_entity_id, LightEmitter)
+        if light:
+            light.active = False

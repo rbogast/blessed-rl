@@ -25,6 +25,7 @@ from systems.combat import CombatSystem
 from systems.inventory import InventorySystem
 from systems.ai import AISystem
 from systems.fov import FOVSystem
+from systems.lighting import LightingSystem
 from systems.render import RenderSystem
 from systems.skills import SkillsSystem
 from systems.throwing import ThrowingSystem
@@ -93,7 +94,8 @@ class RoguelikeGame:
         self.inventory_system.set_render_system(self.render_system)
         self.skills_system = SkillsSystem(self.world, self.message_log)
         self.ai_system = AISystem(self.world, self.movement_system, self.combat_system, self.message_log)
-        self.fov_system = FOVSystem(self.world, self.world_generator, message_log=self.message_log)
+        self.lighting_system = LightingSystem(self.world, self.message_log)
+        self.fov_system = FOVSystem(self.world, self.world_generator, message_log=self.message_log, lighting_system=self.lighting_system)
         self.throwing_system = ThrowingSystem(self.world, self.movement_system, self.fov_system, 
                                             self.physics_system, self.skills_system, self.message_log)
         
@@ -355,7 +357,10 @@ class RoguelikeGame:
     
     def _update_world(self) -> None:
         """Update all world systems after player action."""
-        # Update FOV first
+        # Update lighting system first (fuel depletion)
+        self.lighting_system.update()
+        
+        # Update FOV (which now uses lighting for sight radius)
         self.fov_system.update()
         
         # Update auto-explore system (before AI so it can move the player)

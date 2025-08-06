@@ -16,7 +16,7 @@ import math
 class FOVSystem(System):
     """Implements recursive shadowcasting for field of view calculation."""
     
-    def __init__(self, world, world_generator: "LevelWorldGenerator", sight_radius: int = None, message_log=None):
+    def __init__(self, world, world_generator: "LevelWorldGenerator", sight_radius: int = None, message_log=None, lighting_system=None):
         super().__init__(world)
         self.world_generator = world_generator
         self.sight_radius = sight_radius if sight_radius is not None else GameConfig.PLAYER_SIGHT_RADIUS
@@ -24,6 +24,8 @@ class FOVSystem(System):
         self.previously_visible_tiles = set()  # Track previously visible tiles
         self.preview_mode = False  # Flag for map preview mode
         self.message_log = message_log  # For discovery messages
+        self.lighting_system = lighting_system  # Reference to lighting system
+        self.previously_lit_tiles = set()  # Track previously lit tiles
         
         # Octant multipliers for the 8 directions
         self.octant_multipliers = [
@@ -129,9 +131,17 @@ class FOVSystem(System):
         if not player_pos:
             return
         
+        # Get dynamic sight radius based on equipped light sources
+        if self.lighting_system:
+            dynamic_sight_radius = self.lighting_system.get_player_sight_radius(player_entity)
+            # Use at least 1 tile of sight even without light
+            self.current_sight_radius = max(1, dynamic_sight_radius)
+        else:
+            self.current_sight_radius = self.sight_radius
         
-        # Clear tile visibility in world generator
+        # Clear tile visibility and lighting in world generator
         self._clear_tile_visibility(player_pos.x, player_pos.y)
+        self._clear_tile_lighting(player_pos.x, player_pos.y)
         
         # Clear entity visibility and build position cache
         self.entity_position_cache = {}
@@ -155,13 +165,19 @@ class FOVSystem(System):
         # Mark player tile as visible (use _set_visible to track it)
         self._set_visible(player_pos.x, player_pos.y)
         
-        # Cast shadows in all 8 octants
+        # Cast shadows in all 8 octants for sight
         for octant in range(8):
             self._cast_light(player_pos.x, player_pos.y, 1, 1.0, 0.0, 
                            self.octant_multipliers[0][octant],
                            self.octant_multipliers[1][octant],
                            self.octant_multipliers[2][octant],
                            self.octant_multipliers[3][octant])
+        
+        # Calculate lighting separately if lighting system is available
+        if self.lighting_system:
+            light_radius = self.lighting_system.get_player_light_radius(player_entity)
+            if light_radius > 0:
+                self._calculate_lighting(player_pos.x, player_pos.y, light_radius)
     
     def _cast_light(self, cx: int, cy: int, row: int, start: float, end: float,
                    xx: int, xy: int, yx: int, yy: int) -> None:
@@ -169,10 +185,10 @@ class FOVSystem(System):
         if start < end:
             return
         
-        radius_squared = self.sight_radius * self.sight_radius
+        radius_squared = self.current_sight_radius * self.current_sight_radius
         new_start = 0.0
         
-        for j in range(row, self.sight_radius + 1):
+        for j in range(row, self.current_sight_radius + 1):
             dx = -j - 1
             dy = -j
             blocked = False
@@ -209,7 +225,7 @@ class FOVSystem(System):
                         start = new_start
                 else:
                     # We're in light
-                    if self._is_wall(mx, my) and j < self.sight_radius:
+                    if self._is_wall(mx, my) and j < self.current_sight_radius:
                         # Hit a wall, cast shadow
                         blocked = True
                         self._cast_light(cx, cy, j + 1, start, l_slope,
@@ -352,3 +368,47 @@ class FOVSystem(System):
                 # Add message to log if available
                 if self.message_log:
                     self.message_log.add_warning(f"Auto-explore interrupted - discovered {discovery_type}!")
+    
+    def _clear_tile_lighting(self, player_x: int, player_y: int) -> None:
+        """Clear tile lighting for previously lit tiles."""
+        # Clear all previously lit tiles
+        for x, y in self.previously_lit_tiles:
+            tile = self.world_generator.get_tile_at(x, y)
+            if tile:
+                tile.lit = False
+        
+        # Reset the set for this lighting calculation
+        self.previously_lit_tiles.clear()
+    
+    def _calculate_lighting(self, cx: int, cy: int, light_radius: int) -> None:
+        """Calculate lighting using simple circular radius."""
+        # Mark player position as lit
+        self._set_lit(cx, cy)
+        
+        # Simple circular lighting - check all positions within radius
+        for dx in range(-light_radius, light_radius + 1):
+            for dy in range(-light_radius, light_radius + 1):
+                # Check if within circular radius
+                distance_squared = dx * dx + dy * dy
+                if distance_squared <= light_radius * light_radius:
+                    light_x = cx + dx
+                    light_y = cy + dy
+                    
+                    # Only light tiles that are visible (within FOV)
+                    if self.is_visible(light_x, light_y):
+                        self._set_lit(light_x, light_y)
+    
+    def _set_lit(self, x: int, y: int) -> None:
+        """Mark a position as lit."""
+        # Track this tile as lit for next clearing
+        self.previously_lit_tiles.add((x, y))
+        
+        # Mark the tile as lit in the world generator
+        tile = self.world_generator.get_tile_at(x, y)
+        if tile:
+            tile.lit = True
+    
+    def is_lit(self, x: int, y: int) -> bool:
+        """Check if a position is currently lit."""
+        tile = self.world_generator.get_tile_at(x, y)
+        return tile and getattr(tile, 'lit', False)

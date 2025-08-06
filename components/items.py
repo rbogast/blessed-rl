@@ -127,3 +127,13 @@ class Throwable(Component):
     def __init__(self, weight: float = 1.0, damage_modifier: float = 1.0):
         self.weight = weight  # Weight affects throwing distance and damage
         self.damage_modifier = damage_modifier  # Multiplier for physics damage
+
+
+class LightEmitter(Component):
+    """Component for items that emit light."""
+    
+    def __init__(self, brightness: int, fuel: int, active: bool = True):
+        self.brightness = brightness  # Light radius/intensity
+        self.fuel = fuel             # Fuel remaining
+        self.active = active         # Whether light is currently on
+        self.max_fuel = fuel         # Store original fuel amount for reference

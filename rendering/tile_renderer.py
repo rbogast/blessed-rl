@@ -80,16 +80,23 @@ class TileRenderer:
         entity_char, entity_color = self.entity_renderer.get_entity_at_position(world_x, world_y)
         
         if entity_char:
-            # Show entity with appropriate color based on visibility
+            # Show entity with appropriate color based on visibility and lighting
             if tile.visible:
-                return entity_char, entity_color
+                # Check if tile is lit
+                is_lit = getattr(tile, 'lit', False)
+                if is_lit:
+                    return entity_char, entity_color
+                else:
+                    # Visible but unlit - show in blue
+                    return entity_char, 'blue'
             else:
                 # Entity is out of FOV - show same character in explored color
                 return entity_char, GameConfig.EXPLORED_TILE_COLOR
         else:
             # No entity - render terrain
-            # Get the terrain glyph based on tile type
-            terrain_char, terrain_color = self.glyph_config.get_terrain_glyph(tile.tile_type, tile.visible)
+            # Get the terrain glyph based on tile type and lighting
+            is_lit = getattr(tile, 'lit', False)  # Check if tile has lit attribute
+            terrain_char, terrain_color = self.glyph_config.get_terrain_glyph(tile.tile_type, tile.visible, is_lit)
             
             # Check if this tile is bloody (level-based blood overlay system)
             blood_tiles = set()
@@ -97,12 +104,16 @@ class TileRenderer:
                 blood_tiles = self.world_generator.get_blood_tiles()
             
             if (world_x, world_y) in blood_tiles:
-                # Render the terrain glyph in red instead of normal color
+                # Render the terrain glyph with blood color based on visibility and lighting
                 if tile.visible:
-                    return terrain_char, 'red'
+                    # Check if tile is lit
+                    if is_lit:
+                        return terrain_char, 'red'  # Lit blood is red
+                    else:
+                        return terrain_char, 'blue'  # Unlit blood is blue (like other unlit tiles)
                 else:
-                    # Out of FOV - show darker blood
-                    return terrain_char, 'dark_red'
+                    # Out of FOV - show blood in same color as other explored tiles
+                    return terrain_char, GameConfig.EXPLORED_TILE_COLOR
             else:
                 # No blood - show normal terrain
                 return terrain_char, terrain_color
@@ -113,16 +124,23 @@ class TileRenderer:
         entity_char, entity_color = self.entity_renderer.get_entity_at_position(world_x, world_y)
         
         if entity_char:
-            # Show entity with appropriate color based on visibility
+            # Show entity with appropriate color based on visibility and lighting
             if tile.visible:
-                return entity_char, entity_color
+                # Check if tile is lit
+                is_lit = getattr(tile, 'lit', False)
+                if is_lit:
+                    return entity_char, entity_color
+                else:
+                    # Visible but unlit - show in blue
+                    return entity_char, 'blue'
             else:
                 # Entity is out of FOV - show same character in explored color
                 return entity_char, GameConfig.EXPLORED_TILE_COLOR
         else:
             # No entity - render terrain
-            # Get the terrain glyph based on tile type
-            terrain_char, terrain_color = self.glyph_config.get_terrain_glyph(tile.tile_type, tile.visible)
+            # Get the terrain glyph based on tile type and lighting
+            is_lit = getattr(tile, 'lit', False)  # Check if tile has lit attribute
+            terrain_char, terrain_color = self.glyph_config.get_terrain_glyph(tile.tile_type, tile.visible, is_lit)
             
             # Check if this tile is bloody (level-based blood overlay system)
             blood_tiles = set()
@@ -130,12 +148,16 @@ class TileRenderer:
                 blood_tiles = self.world_generator.get_blood_tiles()
             
             if (world_x, world_y) in blood_tiles:
-                # Render the terrain glyph in red instead of normal color
+                # Render the terrain glyph with blood color based on visibility and lighting
                 if tile.visible:
-                    return terrain_char, 'red'
+                    # Check if tile is lit
+                    if is_lit:
+                        return terrain_char, 'red'  # Lit blood is red
+                    else:
+                        return terrain_char, 'blue'  # Unlit blood is blue (like other unlit tiles)
                 else:
-                    # Out of FOV - show darker blood
-                    return terrain_char, 'dark_red'
+                    # Out of FOV - show blood in same color as other explored tiles
+                    return terrain_char, GameConfig.EXPLORED_TILE_COLOR
             else:
                 # No blood - show normal terrain
                 return terrain_char, terrain_color

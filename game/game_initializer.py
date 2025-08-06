@@ -177,8 +177,8 @@ class GameInitializer:
                 if artifact_placed:
                     break
         
-        # Only spawn potions - no extra equipment
-        test_items = ['health_potion', 'greater_health_potion']
+        # Spawn potions and light sources for testing
+        test_items = ['health_potion', 'greater_health_potion', 'torch', 'lantern']
         
         placed_items = 0
         for dx in range(-3, 4):

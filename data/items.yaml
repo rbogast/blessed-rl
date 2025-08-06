@@ -153,6 +153,29 @@ items:
       weight: 0.7
       damage_modifier: 0.6
   
+  # Light sources
+  torch:
+    name: "Torch"
+    description: "A medieval flashlight."
+    type: "accessory"
+    slot: "accessory"
+    value: 5
+    fuel: 500
+    brightness: 2
+    char: ";"
+    color: "yellow"
+  
+  lantern:
+    name: "Lantern"
+    description: "A lantern."
+    type: "accessory"
+    slot: "accessory"
+    value: 8
+    fuel: 1000
+    brightness: 3
+    char: "ô"
+    color: "yellow"
+  
   # Misc items
   persistence_artifact:
     name: "Persistence Artifact"
