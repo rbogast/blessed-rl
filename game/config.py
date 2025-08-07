@@ -33,10 +33,6 @@ class GameConfig:
     LEVEL_HEIGHT = MAP_HEIGHT   # Height of each dungeon level - match viewport height
     PERSISTENT_LEVELS = False    # If True, keep levels in memory; if False, delete levels unless they have persistence artifacts
     
-    # Chunk configuration (legacy - now used for level generation)
-    CHUNK_WIDTH = LEVEL_WIDTH
-    CHUNK_HEIGHT = LEVEL_HEIGHT
-    
     # Camera configuration
     CAMERA_VIEWPORT_WIDTH = VIEWPORT_WIDTH
     CAMERA_VIEWPORT_HEIGHT = VIEWPORT_HEIGHT

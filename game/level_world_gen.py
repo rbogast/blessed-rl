@@ -1,5 +1,5 @@
 """
-Level-based world generator that replaces the chunk-based system.
+Level-based world generator for dungeon diving.
 """
 
 import random
@@ -113,20 +113,3 @@ class LevelWorldGenerator:
     def seed(self) -> int:
         """Get the world seed."""
         return self._seed
-    
-    # Legacy compatibility methods
-    @property
-    def chunks(self) -> Dict[int, Any]:
-        """Legacy chunks property for compatibility."""
-        # Return empty dict since we don't use chunks anymore
-        return {}
-    
-    def generate_chunk(self, chunk_id: int) -> Any:
-        """Legacy chunk generation for compatibility."""
-        # This shouldn't be called in the new system
-        return None
-    
-    def get_chunk(self, chunk_id: int) -> Any:
-        """Legacy chunk getter for compatibility."""
-        # This shouldn't be called in the new system
-        return None

@@ -27,6 +27,10 @@ class FOVSystem(System):
         self.lighting_system = lighting_system  # Reference to lighting system
         self.previously_lit_tiles = set()  # Track previously lit tiles
         self.previously_penumbra_tiles = set()  # Track previously penumbra tiles
+        self.needs_recalculation = False  # Flag to force recalculation
+        
+        # Subscribe to movement events
+        self.world.event_manager.subscribe('entity_moved', self.on_entity_moved)
         
         # Octant multipliers for the 8 directions
         self.octant_multipliers = [
@@ -46,8 +50,67 @@ class FOVSystem(System):
         """Force FOV recalculation on next update."""
         self.last_player_pos = None
     
+    def on_entity_moved(self, event) -> None:
+        """Handle entity movement events to trigger lighting recalculation."""
+        from components.core import Player
+        from components.items import LightEmitter, EquipmentSlots
+        
+        # Check if the moved entity is the player
+        if self.world.has_component(event.entity_id, Player):
+            # Player moved - will be handled by normal position check
+            return
+        
+        # Check if the moved entity has a light source or is carrying one
+        needs_recalc = False
+        
+        # Check if entity itself is a light source
+        if self.world.has_component(event.entity_id, LightEmitter):
+            light = self.world.get_component(event.entity_id, LightEmitter)
+            if light and light.active:
+                needs_recalc = True
+        
+        # Check if entity has equipped light sources
+        if self.world.has_component(event.entity_id, EquipmentSlots):
+            equipment = self.world.get_component(event.entity_id, EquipmentSlots)
+            if equipment and equipment.accessory:
+                light = self.world.get_component(equipment.accessory, LightEmitter)
+                if light and light.active:
+                    needs_recalc = True
+        
+        # If this entity affects lighting, mark for recalculation
+        if needs_recalc:
+            self.needs_recalculation = True
+    
+    def on_light_state_changed(self, entity_id: int) -> None:
+        """Handle light activation/deactivation events to trigger immediate recalculation."""
+        from components.core import Player
+        from components.items import LightEmitter, EquipmentSlots
+        
+        # Check if the entity with changed light state has a light source or is carrying one
+        needs_recalc = False
+        
+        # Check if entity itself is a light source
+        if self.world.has_component(entity_id, LightEmitter):
+            light = self.world.get_component(entity_id, LightEmitter)
+            if light:  # Any light component change should trigger recalc
+                needs_recalc = True
+        
+        # Check if entity has equipped light sources
+        if self.world.has_component(entity_id, EquipmentSlots):
+            equipment = self.world.get_component(entity_id, EquipmentSlots)
+            if equipment and equipment.accessory:
+                light = self.world.get_component(equipment.accessory, LightEmitter)
+                if light:  # Any equipped light change should trigger recalc
+                    needs_recalc = True
+        
+        # If this entity affects lighting, force immediate recalculation
+        if needs_recalc:
+            self.needs_recalculation = True
+            # Force immediate update instead of waiting for next turn
+            self.update()
+    
     def update(self, dt: float = 0.0) -> None:
-        """Update FOV for all player entities only if they moved."""
+        """Update FOV for all player entities if they moved or if recalculation is needed."""
         player_entities = self.world.get_entities_with_components(Player, Position)
         
         for player_entity in player_entities:
@@ -55,14 +118,15 @@ class FOVSystem(System):
             if not player_pos:
                 continue
                 
-            # Only recalculate if player moved or preview mode changed
+            # Recalculate if player moved, preview mode changed, or forced recalculation needed
             current_pos = (player_pos.x, player_pos.y)
-            if self.last_player_pos != current_pos:
+            if self.last_player_pos != current_pos or self.needs_recalculation:
                 if self.preview_mode:
                     self._calculate_preview_fov(player_entity)
                 else:
                     self._calculate_fov(player_entity)
                 self.last_player_pos = current_pos
+                self.needs_recalculation = False
     
     def _calculate_preview_fov(self, player_entity: int) -> None:
         """Calculate preview FOV - show almost all tiles except those completely surrounded by walls."""
@@ -80,6 +144,7 @@ class FOVSystem(System):
             visible = self.world.get_component(entity_id, Visible)
             if visible:
                 visible.visible = False
+                # Don't reset explored status here - that should persist
             
             # Cache entity positions for fast lookup
             position = self.world.get_component(entity_id, Position)
@@ -493,7 +558,7 @@ class FOVSystem(System):
         return tile and getattr(tile, 'penumbra', False)
     
     def _calculate_world_lighting(self) -> None:
-        """Calculate lighting from all active light sources in the world."""
+        """Calculate lighting from all active light sources in the world that are visible."""
         if not self.lighting_system:
             return
         
@@ -504,10 +569,27 @@ class FOVSystem(System):
             cx = light_source['x']
             cy = light_source['y']
             brightness = light_source['brightness']
+            entity_id = light_source['entity_id']
             
-            # Calculate lighting for this light source
-            self._calculate_lighting(cx, cy, brightness)
+            # Only calculate lighting from visible entities or items on visible tiles
+            should_calculate_lighting = False
             
-            # Calculate penumbra for this light source
-            penumbra_radius = brightness * 2
-            self._calculate_penumbra(cx, cy, brightness, penumbra_radius)
+            # Check if the entity carrying this light is visible
+            if entity_id in self.entity_position_cache.values():
+                # This is an entity at a position - check if it's visible
+                visible = self.world.get_component(entity_id, Visible)
+                if visible and visible.visible:
+                    should_calculate_lighting = True
+            else:
+                # This might be an item on the ground - check if the tile is visible
+                if self.is_visible(cx, cy):
+                    should_calculate_lighting = True
+            
+            # Only calculate lighting if the source should be visible
+            if should_calculate_lighting:
+                # Calculate lighting for this light source
+                self._calculate_lighting(cx, cy, brightness)
+                
+                # Calculate penumbra for this light source
+                penumbra_radius = brightness * 2
+                self._calculate_penumbra(cx, cy, brightness, penumbra_radius)

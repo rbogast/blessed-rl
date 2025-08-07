@@ -17,6 +17,10 @@ class World:
         self.entities = EntityManager()
         self.components = ComponentManager()
         self.systems = SystemManager()
+        
+        # Import here to avoid circular imports
+        from events.core import EventManager
+        self.event_manager = EventManager()
     
     def create_entity(self) -> int:
         """Create a new entity."""

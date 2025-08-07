@@ -80,50 +80,55 @@ class TileRenderer:
         entity_char, entity_color = self.entity_renderer.get_entity_at_position(world_x, world_y)
         
         if entity_char:
-            # Show entity with appropriate color based on visibility and lighting
-            if tile.visible:
-                # Check if tile is lit or in penumbra
-                is_lit = getattr(tile, 'lit', False)
-                is_penumbra = getattr(tile, 'penumbra', False)
-                if is_lit:
-                    return entity_char, entity_color
-                elif is_penumbra:
-                    # Visible and in penumbra - show in blue
-                    return entity_char, 'blue'
-                else:
-                    # Visible but outside penumbra - show in explored color (gray)
-                    return entity_char, GameConfig.EXPLORED_TILE_COLOR
-            else:
-                # Entity is out of FOV - show same character in explored color
-                return entity_char, GameConfig.EXPLORED_TILE_COLOR
-        else:
-            # No entity - render terrain
-            # Get the terrain glyph based on tile type and lighting
-            is_lit = getattr(tile, 'lit', False)  # Check if tile has lit attribute
-            is_penumbra = getattr(tile, 'penumbra', False)  # Check if tile has penumbra attribute
-            terrain_char, terrain_color = self.glyph_config.get_terrain_glyph(tile.tile_type, tile.visible, is_lit, is_penumbra)
+            # Check if the entity is actually visible (has Visible component and is marked as visible)
+            entity_visible = self._is_entity_visible_at_position(world_x, world_y)
             
-            # Check if this tile is bloody (level-based blood overlay system)
-            blood_tiles = set()
-            if hasattr(self.world_generator, 'get_blood_tiles'):
-                blood_tiles = self.world_generator.get_blood_tiles()
-            
-            if (world_x, world_y) in blood_tiles:
-                # Render the terrain glyph with blood color based on visibility and lighting
+            if entity_visible:
+                # Show entity with appropriate color based on visibility and lighting
                 if tile.visible:
-                    # Check if tile is lit
+                    # Check if tile is lit or in penumbra
+                    is_lit = getattr(tile, 'lit', False)
+                    is_penumbra = getattr(tile, 'penumbra', False)
                     if is_lit:
-                        return terrain_char, 'red'  # Lit blood is red
+                        return entity_char, entity_color
                     elif is_penumbra:
-                        return terrain_char, 'blue'  # Penumbra blood is blue
+                        # Visible and in penumbra - show in blue
+                        return entity_char, 'blue'
                     else:
-                        return terrain_char, GameConfig.EXPLORED_TILE_COLOR  # Outside penumbra blood is gray
+                        # Visible but outside penumbra - show in explored color (gray)
+                        return entity_char, GameConfig.EXPLORED_TILE_COLOR
                 else:
-                    # Out of FOV - show blood in same color as other explored tiles
-                    return terrain_char, GameConfig.EXPLORED_TILE_COLOR
+                    # Entity is out of FOV - show same character in explored color
+                    return entity_char, GameConfig.EXPLORED_TILE_COLOR
+            # If entity is not visible, fall through to show terrain instead
+        
+        # No visible entity - render terrain
+        # Get the terrain glyph based on tile type and lighting
+        is_lit = getattr(tile, 'lit', False)  # Check if tile has lit attribute
+        is_penumbra = getattr(tile, 'penumbra', False)  # Check if tile has penumbra attribute
+        terrain_char, terrain_color = self.glyph_config.get_terrain_glyph(tile.tile_type, tile.visible, is_lit, is_penumbra)
+        
+        # Check if this tile is bloody (level-based blood overlay system)
+        blood_tiles = set()
+        if hasattr(self.world_generator, 'get_blood_tiles'):
+            blood_tiles = self.world_generator.get_blood_tiles()
+        
+        if (world_x, world_y) in blood_tiles:
+            # Render the terrain glyph with blood color based on visibility and lighting
+            if tile.visible:
+                # Check if tile is lit
+                if is_lit:
+                    return terrain_char, 'red'  # Lit blood is red
+                elif is_penumbra:
+                    return terrain_char, 'blue'  # Penumbra blood is blue
+                else:
+                    return terrain_char, GameConfig.EXPLORED_TILE_COLOR  # Outside penumbra blood is gray
             else:
-                # No blood - show normal terrain
-                return terrain_char, terrain_color
+                # Out of FOV - show blood in same color as other explored tiles
+                return terrain_char, GameConfig.EXPLORED_TILE_COLOR
+        else:
+            # No blood - show normal terrain
+            return terrain_char, terrain_color
     
     def _get_original_tile_glyph(self, world_x: int, world_y: int, tile) -> Tuple[str, str]:
         """Get the original glyph and color that would be displayed at this position."""
@@ -175,6 +180,51 @@ class TileRenderer:
             else:
                 # No blood - show normal terrain
                 return terrain_char, terrain_color
+    
+    def _is_entity_visible_at_position(self, world_x: int, world_y: int) -> bool:
+        """Check if any entity at the given position should be visible."""
+        if not hasattr(self.entity_renderer, 'world'):
+            return False
+        
+        from components.core import Position, Visible, Player
+        from components.items import Item, Pickupable
+        from components.ai import AI
+        
+        # Get all entities at this position with Position component
+        entities = self.entity_renderer.world.get_entities_with_components(Position)
+        
+        for entity_id in entities:
+            position = self.entity_renderer.world.get_component(entity_id, Position)
+            
+            if position and position.x == world_x and position.y == world_y:
+                # Player is always visible if they have a Visible component
+                if self.entity_renderer.world.has_component(entity_id, Player):
+                    visible = self.entity_renderer.world.get_component(entity_id, Visible)
+                    return visible and visible.visible
+                
+                # NPCs/AI entities need to be marked as visible
+                elif self.entity_renderer.world.has_component(entity_id, AI):
+                    visible = self.entity_renderer.world.get_component(entity_id, Visible)
+                    return visible and visible.visible
+                
+                # Items are visible if the tile is visible (they don't have their own visibility state)
+                elif (self.entity_renderer.world.has_component(entity_id, Item) or 
+                      self.entity_renderer.world.has_component(entity_id, Pickupable)):
+                    # Items are visible if the tile they're on is visible
+                    tile = self.world_generator.get_tile_at(world_x, world_y)
+                    return tile and tile.visible
+                
+                # Other entities with Visible component
+                elif self.entity_renderer.world.has_component(entity_id, Visible):
+                    visible = self.entity_renderer.world.get_component(entity_id, Visible)
+                    return visible and visible.visible
+                
+                # Entities without Visible component are visible if tile is visible
+                else:
+                    tile = self.world_generator.get_tile_at(world_x, world_y)
+                    return tile and tile.visible
+        
+        return False
     
     def _is_throwing_line_blocked(self, throwing_line: list, target_x: int, target_y: int) -> bool:
         """Check if the throwing line is blocked by walls up to the target position."""

@@ -121,7 +121,7 @@ The game uses a clean Entity Component System architecture:
 
 ### Key Systems
 
-- **WorldGenerator**: Procedural map generation using cellular automata
+- **LevelGenerator**: Procedural dungeon level generation
 - **FOVSystem**: Recursive shadowcasting for field of view
 - **MovementSystem**: Handles entity movement and collision
 - **CombatSystem**: Turn-based combat resolution

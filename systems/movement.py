@@ -30,6 +30,8 @@ class MovementSystem(System):
         if not position:
             return False
         
+        # Store old position for event
+        old_pos = (position.x, position.y)
         new_x = position.x + dx
         new_y = position.y + dy
         
@@ -46,6 +48,8 @@ class MovementSystem(System):
                 self._open_door(door_entity)
                 position.x = new_x
                 position.y = new_y
+                # Emit movement event
+                self._emit_movement_event(entity_id, old_pos, (new_x, new_y))
                 return True
         
         # Check for collision
@@ -56,6 +60,9 @@ class MovementSystem(System):
         position.x = new_x
         position.y = new_y
         
+        # Emit movement event
+        self._emit_movement_event(entity_id, old_pos, (new_x, new_y))
+        
         return True
     
     def try_move_to(self, entity_id: int, target_x: int, target_y: int) -> bool:
@@ -63,6 +70,9 @@ class MovementSystem(System):
         position = self.world.get_component(entity_id, Position)
         if not position:
             return False
+        
+        # Store old position for event
+        old_pos = (position.x, position.y)
         
         # Check bounds using centralized config
         if not GameConfig.is_valid_y(target_y):
@@ -75,6 +85,9 @@ class MovementSystem(System):
         # Move the entity
         position.x = target_x
         position.y = target_y
+        
+        # Emit movement event
+        self._emit_movement_event(entity_id, old_pos, (target_x, target_y))
         
         return True
     
@@ -190,3 +203,11 @@ class MovementSystem(System):
             # Log the action
             if self.message_log:
                 self.message_log.add_info("You open the door.")
+    
+    def _emit_movement_event(self, entity_id: int, old_pos: tuple, new_pos: tuple) -> None:
+        """Emit a movement event when an entity moves."""
+        # Only emit if position actually changed
+        if old_pos != new_pos:
+            from events.movement import EntityMovedEvent
+            event = EntityMovedEvent(entity_id, old_pos, new_pos)
+            self.world.event_manager.emit('entity_moved', event)

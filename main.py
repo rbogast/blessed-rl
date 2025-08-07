@@ -31,7 +31,6 @@ from systems.skills import SkillsSystem
 from systems.throwing import ThrowingSystem
 from systems.auto_explore import AutoExploreSystem
 from systems.examine import ExamineSystem
-from game.prefabs import PrefabManager
 from game.item_factory import ItemFactory
 from effects.core import EffectsManager
 from effects.physics import PhysicsSystem, KnockbackEffect, ShockwaveEffect
@@ -58,9 +57,6 @@ class RoguelikeGame:
         self.message_log = MessageLog(width=GameConfig.SIDEBAR_WIDTH, height=GameConfig.GAME_INFO_HEIGHT, game_state=self.game_state)
         self.camera = Camera(viewport_width=GameConfig.MAP_WIDTH, viewport_height=GameConfig.MAP_HEIGHT)
         self.world_generator = LevelWorldGenerator(self.world, seed=random.randint(0, 1000000))
-        
-        # Initialize prefab system
-        self.prefab_manager = PrefabManager(self.world, self.world_generator, self.message_log)
         
         # Initialize item factory
         self.item_factory = ItemFactory(self.world)
@@ -346,9 +342,6 @@ class RoguelikeGame:
         # Generate new seed and reinitialize world generator
         self.world_generator = LevelWorldGenerator(self.world, seed=random.randint(0, 1000000))
         
-        # Reset prefab manager
-        self.prefab_manager = PrefabManager(self.world, self.world_generator, self.message_log)
-        
         # Update systems that reference the world generator
         self.movement_system.world_generator = self.world_generator
         self.fov_system.world_generator = self.world_generator
@@ -370,7 +363,7 @@ class RoguelikeGame:
         # Update lighting system first (fuel depletion)
         self.lighting_system.update()
         
-        # Update FOV (which now uses lighting for sight radius)
+        # Update FOV (which now uses lighting for sight radius and processes events)
         self.fov_system.update()
         
         # Update auto-explore system (before AI so it can move the player)
@@ -384,6 +377,9 @@ class RoguelikeGame:
         
         # Update AI
         self.ai_system.update()
+        
+        # Update FOV again after AI movement (in case NPCs with lights moved)
+        self.fov_system.update()
     
     def _is_auto_exploring(self, player_entity: int) -> bool:
         """Check if the player is currently auto-exploring."""

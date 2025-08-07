@@ -9,8 +9,8 @@ class Position(Component):
     """Entity position in the world using global coordinates."""
     
     def __init__(self, x: int, y: int):
-        self.x = x  # Global X coordinate (seamless across chunks)
-        self.y = y  # Y coordinate (0-18)
+        self.x = x  # X coordinate
+        self.y = y  # Y coordinate
 
 
 class Renderable(Component):

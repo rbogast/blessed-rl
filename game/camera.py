@@ -60,16 +60,6 @@ class Camera:
         left, top, right, bottom = self.get_viewport_bounds()
         return left <= world_x < right and top <= world_y < bottom
     
-    def get_visible_chunks(self) -> Tuple[int, int]:
-        """Get the range of chunks that are currently visible."""
-        left, _, right, _ = self.get_viewport_bounds()
-        
-        chunk_width = 40
-        start_chunk = left // chunk_width
-        end_chunk = (right - 1) // chunk_width + 1
-        
-        return start_chunk, end_chunk
-    
     def set_level_bounds(self, width: int, height: int) -> None:
         """Update the camera's level bounds for a new level."""
         self.level_width = width

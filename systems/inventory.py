@@ -48,20 +48,20 @@ class InventorySystem(System):
                 self.message_log.add_warning("Your inventory is full!")
             return False
         
-        # Check if this is an active light source before picking up
-        from components.items import LightEmitter
-        light = self.world.get_component(item_entity_id, LightEmitter)
-        is_active_light = light and light.active
-        
         # Add item to inventory
         if inventory.add_item(item_entity_id):
-            # Remove item from world position (make it non-renderable)
+            # Store old position for movement event before removing
+            old_pos = None
             if self.world.has_component(item_entity_id, Position):
+                position = self.world.get_component(item_entity_id, Position)
+                old_pos = (position.x, position.y)
                 self.world.remove_component(item_entity_id, Position)
-            
-            # Force FOV recalculation if picking up an active light source
-            if is_active_light and self.fov_system:
-                self.fov_system.force_recalculation()
+                
+                # Emit movement event for item being picked up (moved to inventory)
+                # Use a special position (-1, -1) to indicate "in inventory"
+                from events.movement import EntityMovedEvent
+                event = EntityMovedEvent(item_entity_id, old_pos, (-1, -1))
+                self.world.event_manager.emit('entity_moved', event)
             
             # Remove item from current level's entity list
             self._remove_item_from_current_level(item_entity_id)
@@ -121,12 +121,13 @@ class InventorySystem(System):
         
         # Remove from inventory
         if inventory.remove_item(item_entity_id):
-            # Place item at entity's position
+            # Place item at entity's position and emit movement event
             self.world.add_component(item_entity_id, Position(position.x, position.y))
             
-            # Force FOV recalculation if dropping an active light source
-            if is_active_light and self.fov_system:
-                self.fov_system.force_recalculation()
+            # Emit movement event for item being dropped (moved from inventory to world)
+            from events.movement import EntityMovedEvent
+            event = EntityMovedEvent(item_entity_id, (-1, -1), (position.x, position.y))
+            self.world.event_manager.emit('entity_moved', event)
             
             # Get item name for message
             item = self.world.get_component(item_entity_id, Item)
@@ -170,19 +171,20 @@ class InventorySystem(System):
         inventory.remove_item(item_entity_id)
         
         # If there was a previously equipped item, put it back in inventory
+        light_state_changed = False
         if previous_item:
             inventory.add_item(previous_item)
             # Deactivate light if the previous item was a light source
-            self._handle_light_deactivation(previous_item)
+            if self._handle_light_deactivation(previous_item):
+                light_state_changed = True
         
         # Activate light if the newly equipped item is a light source
-        light_activated = self._handle_light_activation(item_entity_id)
+        if self._handle_light_activation(item_entity_id):
+            light_state_changed = True
         
-        # Force FOV recalculation if any active light source was equipped
-        from components.items import LightEmitter
-        light = self.world.get_component(item_entity_id, LightEmitter)
-        if light and light.active and self.fov_system:
-            self.fov_system.force_recalculation()
+        # Trigger immediate lighting recalculation if any light state changed
+        if light_state_changed and self.fov_system:
+            self.fov_system.on_light_state_changed(entity_id)
         
         # Get item name for message
         item = self.world.get_component(item_entity_id, Item)
@@ -219,9 +221,9 @@ class InventorySystem(System):
             # Deactivate light if the unequipped item was a light source
             light_deactivated = self._handle_light_deactivation(unequipped_item)
             
-            # Force FOV recalculation if a light source was unequipped
+            # Trigger immediate lighting recalculation if light state changed
             if light_deactivated and self.fov_system:
-                self.fov_system.force_recalculation()
+                self.fov_system.on_light_state_changed(entity_id)
             
             # Get item name for message
             item = self.world.get_component(unequipped_item, Item)

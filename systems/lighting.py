@@ -113,6 +113,8 @@ class LightingSystem(System):
         from components.core import Position
         
         world_lights = []
+        
+        # Check for light sources placed in the world (have Position component)
         light_entities = self.world.get_entities_with_components(LightEmitter, Position)
         
         for entity_id in light_entities:
@@ -126,6 +128,23 @@ class LightingSystem(System):
                     'y': position.y,
                     'brightness': light.brightness
                 })
+        
+        # Check for equipped light sources on entities (NPCs, players, etc.)
+        entities_with_equipment = self.world.get_entities_with_components(EquipmentSlots, Position)
+        
+        for entity_id in entities_with_equipment:
+            equipment_slots = self.world.get_component(entity_id, EquipmentSlots)
+            position = self.world.get_component(entity_id, Position)
+            
+            if equipment_slots and position and equipment_slots.accessory:
+                light = self.world.get_component(equipment_slots.accessory, LightEmitter)
+                if light and light.active:
+                    world_lights.append({
+                        'entity_id': equipment_slots.accessory,
+                        'x': position.x,
+                        'y': position.y,
+                        'brightness': light.brightness
+                    })
         
         return world_lights
     

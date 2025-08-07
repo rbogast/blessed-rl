@@ -26,7 +26,7 @@ Level-based world generator for dungeon diving roguelike.
 import random
 from typing import List, Dict, Any, Optional, Tuple
 from game.dungeon_level import DungeonLevel
-from game.worldgen.core import WorldGenerator as BaseWorldGenerator, WorldConfig, Tile, GenContext
+from game.worldgen.core import WorldConfig, Tile, GenContext
 from game.worldgen.scheduler import WorldScheduler
 from game.config import GameConfig
 from components.core import Position, Renderable, Blocking, Visible
@@ -35,8 +35,10 @@ from components.character import CharacterAttributes, Experience, XPValue
 from components.effects import Physics
 from components.ai import AI, AIType
 from components.corpse import Species, Disposition, DispositionType
+from components.items import Inventory, EquipmentSlots
 from game.character_stats import calculate_max_hp
 from game.tile_entity_converter import TileEntityConverter
+from game.item_factory import ItemFactory
 
 
 class LevelGenerator:
@@ -53,9 +55,6 @@ class LevelGenerator:
             chunk_height=GameConfig.LEVEL_HEIGHT,
             seed=self.seed
         )
-        
-        # Create base generator for biome generation
-        self.base_generator = BaseWorldGenerator(world, self.config, scheduler)
     
     def generate_level(self, level_id: int, stairs_up_pos: Optional[Tuple[int, int]] = None, turn_count: int = 0) -> DungeonLevel:
         """Generate a complete dungeon level."""
@@ -364,6 +363,29 @@ class LevelGenerator:
         else:
             disposition = DispositionType.NEUTRAL
         self.world.add_component(entity_id, Disposition(disposition))
+        
+        # Special handling for cultists - equip them with torches
+        if species_name == 'cultist':
+            # Add inventory and equipment slots
+            self.world.add_component(entity_id, Inventory(capacity=10))
+            self.world.add_component(entity_id, EquipmentSlots())
+            
+            # Create a torch for the cultist
+            item_factory = ItemFactory(self.world)
+            torch_entity = item_factory.create_item('torch')
+            
+            if torch_entity:
+                # Get the equipment slots component we just added
+                equipment_slots = self.world.get_component(entity_id, EquipmentSlots)
+                
+                # Equip the torch in the accessory slot
+                equipment_slots.equip_item(torch_entity, 'accessory')
+                
+                # Ensure the torch is active (it should be by default from ItemFactory)
+                from components.items import LightEmitter
+                light = self.world.get_component(torch_entity, LightEmitter)
+                if light:
+                    light.active = True
         
         return entity_id
     

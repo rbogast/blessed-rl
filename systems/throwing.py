@@ -115,23 +115,25 @@ class ThrowingSystem(System):
             max_distance, accuracy
         )
         
-        # Check if this is an active light source before moving
-        from components.items import LightEmitter
-        light = self.world.get_component(item_entity, LightEmitter)
-        is_active_light = light and light.active
-        
         # Move item to landing position
         item_pos = self.world.get_component(item_entity, Position)
+        old_pos = None
+        
         if not item_pos:
+            # Item doesn't have position (was in inventory), add it
             item_pos = Position(actual_x, actual_y)
             self.world.add_component(item_entity, item_pos)
+            old_pos = (-1, -1)  # Special position indicating "from inventory"
         else:
+            # Item already has position, update it
+            old_pos = (item_pos.x, item_pos.y)
             item_pos.x = actual_x
             item_pos.y = actual_y
         
-        # Force FOV recalculation if throwing an active light source
-        if is_active_light and self.fov_system:
-            self.fov_system.force_recalculation()
+        # Always emit movement event for thrown items (position always changes)
+        from events.movement import EntityMovedEvent
+        event = EntityMovedEvent(item_entity, old_pos, (actual_x, actual_y))
+        self.world.event_manager.emit('entity_moved', event)
         
         # Add thrown object component for processing
         thrown_obj = ThrownObject(cursor.cursor_x, cursor.cursor_y, player_entity, 
