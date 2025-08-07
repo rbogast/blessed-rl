@@ -37,6 +37,10 @@ class Visible(Component):
     def __init__(self):
         self.visible = False      # Currently visible to player
         self.explored = False     # Has been seen before
+        self.last_seen_x = None   # Last position where entity was seen
+        self.last_seen_y = None   # Last position where entity was seen
+        self.last_seen_char = None  # Last character when entity was seen
+        self.last_seen_color = None # Last color when entity was seen
 
 
 class Door(Component):

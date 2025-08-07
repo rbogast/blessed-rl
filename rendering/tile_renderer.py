@@ -100,7 +100,13 @@ class TileRenderer:
                 else:
                     # Entity is out of FOV - show same character in explored color
                     return entity_char, GameConfig.EXPLORED_TILE_COLOR
-            # If entity is not visible, fall through to show terrain instead
+            # If entity is not visible, fall through to check for last seen entities
+        
+        # No currently visible entity, check for last seen entities at this position
+        last_seen_char, last_seen_color = self._get_last_seen_entity_at_position(world_x, world_y)
+        if last_seen_char:
+            # Show last seen entity in explored color
+            return last_seen_char, GameConfig.EXPLORED_TILE_COLOR
         
         # No visible entity - render terrain
         # Get the terrain glyph based on tile type and lighting
@@ -181,6 +187,77 @@ class TileRenderer:
                 # No blood - show normal terrain
                 return terrain_char, terrain_color
     
+    def _get_entity_at_position(self, world_x: int, world_y: int) -> tuple:
+        """Get entity info at position, including last seen entities. Returns (char, color, is_current)."""
+        if not hasattr(self.entity_renderer, 'world'):
+            return None, None, False
+        
+        from components.core import Position, Visible, Player
+        from components.items import Item, Pickupable
+        from components.ai import AI
+        
+        # First, check if there's a current entity at this position using the entity renderer
+        entity_char, entity_color = self.entity_renderer.get_entity_at_position(world_x, world_y)
+        
+        if entity_char:
+            # There's an entity here - check if it should be visible
+            tile = self.world_generator.get_tile_at(world_x, world_y)
+            
+            # The entity renderer already handles priority and returns the top entity
+            # We just need to check if any entity at this position should be visible
+            entities = self.entity_renderer.world.get_entities_with_components(Position)
+            for entity_id in entities:
+                position = self.entity_renderer.world.get_component(entity_id, Position)
+                if position and position.x == world_x and position.y == world_y:
+                    # Check visibility based on entity type
+                    visible_component = self.entity_renderer.world.get_component(entity_id, Visible)
+                    
+                    # Player is always visible if tile is visible
+                    if self.entity_renderer.world.has_component(entity_id, Player):
+                        if tile and tile.visible:
+                            return entity_char, entity_color, True
+                        continue
+                    
+                    # NPCs/AI entities need to be marked as visible in their Visible component
+                    if self.entity_renderer.world.has_component(entity_id, AI):
+                        if visible_component and visible_component.visible:
+                            return entity_char, entity_color, True
+                        continue
+                    
+                    # Items are visible if the tile is visible
+                    if (self.entity_renderer.world.has_component(entity_id, Item) or 
+                        self.entity_renderer.world.has_component(entity_id, Pickupable)):
+                        if tile and tile.visible:
+                            return entity_char, entity_color, True
+                        continue
+                    
+                    # Other entities without Visible component are visible if tile is visible
+                    if not visible_component:
+                        if tile and tile.visible:
+                            return entity_char, entity_color, True
+                        continue
+                    
+                    # Entities with Visible component need to be marked as visible
+                    if visible_component and visible_component.visible:
+                        return entity_char, entity_color, True
+        
+        # No currently visible entity, check for last seen entities at this position
+        tile = self.world_generator.get_tile_at(world_x, world_y)
+        if not tile or not tile.explored:
+            return None, None, False
+        
+        # Look for entities that were last seen at this position
+        all_entities = self.entity_renderer.world.get_entities_with_components(Visible)
+        for entity_id in all_entities:
+            visible = self.entity_renderer.world.get_component(entity_id, Visible)
+            if (visible and visible.explored and 
+                visible.last_seen_x == world_x and visible.last_seen_y == world_y and
+                visible.last_seen_char and visible.last_seen_color):
+                # Return last seen entity info
+                return visible.last_seen_char, visible.last_seen_color, False
+        
+        return None, None, False
+    
     def _is_entity_visible_at_position(self, world_x: int, world_y: int) -> bool:
         """Check if any entity at the given position should be visible."""
         if not hasattr(self.entity_renderer, 'world'):
@@ -225,6 +302,30 @@ class TileRenderer:
                     return tile and tile.visible
         
         return False
+    
+    def _get_last_seen_entity_at_position(self, world_x: int, world_y: int) -> tuple:
+        """Get last seen entity at position. Returns (char, color)."""
+        if not hasattr(self.entity_renderer, 'world'):
+            return None, None
+        
+        from components.core import Visible
+        
+        # Check if this tile has been explored
+        tile = self.world_generator.get_tile_at(world_x, world_y)
+        if not tile or not tile.explored:
+            return None, None
+        
+        # Look for entities that were last seen at this position
+        all_entities = self.entity_renderer.world.get_entities_with_components(Visible)
+        for entity_id in all_entities:
+            visible = self.entity_renderer.world.get_component(entity_id, Visible)
+            if (visible and visible.explored and 
+                visible.last_seen_x == world_x and visible.last_seen_y == world_y and
+                visible.last_seen_char and visible.last_seen_color):
+                # Return last seen entity info
+                return visible.last_seen_char, visible.last_seen_color
+        
+        return None, None
     
     def _is_throwing_line_blocked(self, throwing_line: list, target_x: int, target_y: int) -> bool:
         """Check if the throwing line is blocked by walls up to the target position."""

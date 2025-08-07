@@ -83,31 +83,11 @@ class FOVSystem(System):
     
     def on_light_state_changed(self, entity_id: int) -> None:
         """Handle light activation/deactivation events to trigger immediate recalculation."""
-        from components.core import Player
-        from components.items import LightEmitter, EquipmentSlots
-        
-        # Check if the entity with changed light state has a light source or is carrying one
-        needs_recalc = False
-        
-        # Check if entity itself is a light source
-        if self.world.has_component(entity_id, LightEmitter):
-            light = self.world.get_component(entity_id, LightEmitter)
-            if light:  # Any light component change should trigger recalc
-                needs_recalc = True
-        
-        # Check if entity has equipped light sources
-        if self.world.has_component(entity_id, EquipmentSlots):
-            equipment = self.world.get_component(entity_id, EquipmentSlots)
-            if equipment and equipment.accessory:
-                light = self.world.get_component(equipment.accessory, LightEmitter)
-                if light:  # Any equipped light change should trigger recalc
-                    needs_recalc = True
-        
-        # If this entity affects lighting, force immediate recalculation
-        if needs_recalc:
-            self.needs_recalculation = True
-            # Force immediate update instead of waiting for next turn
-            self.update()
+        # Always force recalculation when this method is called
+        # The inventory system should only call this when there's actually a light state change
+        self.needs_recalculation = True
+        # Force immediate update instead of waiting for next turn
+        self.update()
     
     def update(self, dt: float = 0.0) -> None:
         """Update FOV for all player entities if they moved or if recalculation is needed."""
@@ -366,12 +346,20 @@ class FOVSystem(System):
             if was_explored and not tile.interesting:
                 self._check_and_mark_tile_interesting(x, y, tile)
         
-        # Mark any entities at this position as visible using cache
+        # Mark any entities at this position as visible using cache and update last seen info
         entity_id = self.entity_position_cache.get((x, y))
         if entity_id:
             visible = self.world.get_component(entity_id, Visible)
             if visible:
                 visible.visible = True
+                # Update last seen information
+                from components.core import Renderable
+                renderable = self.world.get_component(entity_id, Renderable)
+                if renderable:
+                    visible.last_seen_x = x
+                    visible.last_seen_y = y
+                    visible.last_seen_char = renderable.char
+                    visible.last_seen_color = renderable.color
                 # Don't automatically mark entities as explored either
     
     def is_visible(self, x: int, y: int) -> bool:
@@ -558,7 +546,7 @@ class FOVSystem(System):
         return tile and getattr(tile, 'penumbra', False)
     
     def _calculate_world_lighting(self) -> None:
-        """Calculate lighting from all active light sources in the world that are visible."""
+        """Calculate lighting from all active light sources in the world."""
         if not self.lighting_system:
             return
         
@@ -571,25 +559,10 @@ class FOVSystem(System):
             brightness = light_source['brightness']
             entity_id = light_source['entity_id']
             
-            # Only calculate lighting from visible entities or items on visible tiles
-            should_calculate_lighting = False
+            # Light sources always cast light regardless of whether you can see the source
+            # The visibility check happens when we set tiles as lit - only visible tiles get lit
+            self._calculate_lighting(cx, cy, brightness)
             
-            # Check if the entity carrying this light is visible
-            if entity_id in self.entity_position_cache.values():
-                # This is an entity at a position - check if it's visible
-                visible = self.world.get_component(entity_id, Visible)
-                if visible and visible.visible:
-                    should_calculate_lighting = True
-            else:
-                # This might be an item on the ground - check if the tile is visible
-                if self.is_visible(cx, cy):
-                    should_calculate_lighting = True
-            
-            # Only calculate lighting if the source should be visible
-            if should_calculate_lighting:
-                # Calculate lighting for this light source
-                self._calculate_lighting(cx, cy, brightness)
-                
-                # Calculate penumbra for this light source
-                penumbra_radius = brightness * 2
-                self._calculate_penumbra(cx, cy, brightness, penumbra_radius)
+            # Calculate penumbra for this light source
+            penumbra_radius = brightness * 2
+            self._calculate_penumbra(cx, cy, brightness, penumbra_radius)

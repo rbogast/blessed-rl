@@ -215,15 +215,21 @@ class InventorySystem(System):
         unequipped_item = equipment_slots.unequip_item(slot)
         
         if unequipped_item:
+            # Deactivate light if the unequipped item was a light source (do this BEFORE moving to inventory)
+            light_deactivated = self._handle_light_deactivation(unequipped_item)
+            
             # Add the unequipped item back to inventory
             inventory.add_item(unequipped_item)
-            
-            # Deactivate light if the unequipped item was a light source
-            light_deactivated = self._handle_light_deactivation(unequipped_item)
             
             # Trigger immediate lighting recalculation if light state changed
             if light_deactivated and self.fov_system:
                 self.fov_system.on_light_state_changed(entity_id)
+                # Also invalidate render cache and request render
+                if self.render_system:
+                    self.render_system.invalidate_cache()
+                    # Request immediate render update
+                    if hasattr(self.render_system, 'game_state'):
+                        self.render_system.game_state.request_render()
             
             # Get item name for message
             item = self.world.get_component(unequipped_item, Item)
