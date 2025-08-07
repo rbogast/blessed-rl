@@ -4,21 +4,29 @@
 
 terrain:
   floor:
+    # Lit and penumbra states - original glyph
     unicode: "·"
     ascii: "."
-    cp437: "·"  # Code page 437 (DOS/Windows)
+    cp437: "·"  # CP437 interpunct (character 250)
+    # Out of sight explored state - interpunct glyph
+    unicode_explored: "·"
+    ascii_explored: "·"
+    cp437_explored: "·"  # CP437 interpunct (character 250)
     visible_color: "white"
     visible_unlit_color: "blue"
     visible_penumbra_color: "blue"
-    explored_color: "bright_black"
   wall:
+    # Lit and penumbra states - medium shade (current)
     unicode: "▒"
     ascii: "#"
-    cp437: "▒"
+    cp437: "▒"  # CP437 medium shade (character 177)
+    # Out of sight explored state - light shade
+    unicode_explored: "░"
+    ascii_explored: "#"
+    cp437_explored: "░"  # CP437 light shade (character 176)
     visible_color: "yellow"
     visible_unlit_color: "blue"
     visible_penumbra_color: "blue"
-    explored_color: "bright_black"
   door_closed:
     unicode: "+"
     ascii: "+"
@@ -26,15 +34,13 @@ terrain:
     visible_color: "brown"
     visible_unlit_color: "blue"
     visible_penumbra_color: "blue"
-    explored_color: "bright_black"
   door_open:
-    unicode: "/"
-    ascii: "/"
-    cp437: "/"
+    unicode: "'"
+    ascii: "'"
+    cp437: "'"
     visible_color: "brown"
     visible_unlit_color: "blue"
     visible_penumbra_color: "blue"
-    explored_color: "bright_black"
   stairs_down:
     unicode: ">"
     ascii: ">"
@@ -42,7 +48,6 @@ terrain:
     visible_color: "white"
     visible_unlit_color: "blue"
     visible_penumbra_color: "blue"
-    explored_color: "bright_black"
   stairs_up:
     unicode: "<"
     ascii: "<"
@@ -50,7 +55,6 @@ terrain:
     visible_color: "white"
     visible_unlit_color: "blue"
     visible_penumbra_color: "blue"
-    explored_color: "bright_black"
   pine_tree:
     unicode: "♠"
     ascii: "P"
@@ -58,7 +62,6 @@ terrain:
     visible_color: "green"
     visible_unlit_color: "blue"
     visible_penumbra_color: "blue"
-    explored_color: "bright_black"
   oak_tree:
     unicode: "♣"
     ascii: "&"
@@ -66,7 +69,6 @@ terrain:
     visible_color: "green"
     visible_unlit_color: "blue"
     visible_penumbra_color: "blue"
-    explored_color: "bright_black"
 
 entities:
   # Player character

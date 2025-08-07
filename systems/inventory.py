@@ -48,11 +48,20 @@ class InventorySystem(System):
                 self.message_log.add_warning("Your inventory is full!")
             return False
         
+        # Check if this is an active light source before picking up
+        from components.items import LightEmitter
+        light = self.world.get_component(item_entity_id, LightEmitter)
+        is_active_light = light and light.active
+        
         # Add item to inventory
         if inventory.add_item(item_entity_id):
             # Remove item from world position (make it non-renderable)
             if self.world.has_component(item_entity_id, Position):
                 self.world.remove_component(item_entity_id, Position)
+            
+            # Force FOV recalculation if picking up an active light source
+            if is_active_light and self.fov_system:
+                self.fov_system.force_recalculation()
             
             # Remove item from current level's entity list
             self._remove_item_from_current_level(item_entity_id)
@@ -169,8 +178,10 @@ class InventorySystem(System):
         # Activate light if the newly equipped item is a light source
         light_activated = self._handle_light_activation(item_entity_id)
         
-        # Force FOV recalculation if a light source was equipped
-        if light_activated and self.fov_system:
+        # Force FOV recalculation if any active light source was equipped
+        from components.items import LightEmitter
+        light = self.world.get_component(item_entity_id, LightEmitter)
+        if light and light.active and self.fov_system:
             self.fov_system.force_recalculation()
         
         # Get item name for message

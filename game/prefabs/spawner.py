@@ -188,8 +188,12 @@ class PrefabSpawner:
         elif tile_type in ['door_closed', 'door_open']:
             # Create door entity
             is_open = (tile_type == 'door_open')
-            door_char = '-' if is_open else '+'
-            door_color = 'brown'
+            
+            # Get door appearance from glyph config
+            if is_open:
+                door_char, door_color = self.glyph_config.get_terrain_glyph('door_open')
+            else:
+                door_char, door_color = self.glyph_config.get_terrain_glyph('door_closed')
             
             entity_id = self.world.create_entity()
             

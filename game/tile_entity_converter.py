@@ -72,9 +72,11 @@ class TileEntityConverter:
         # Add components
         self.world.add_component(entity_id, Position(x, y))
         
-        # Set appearance based on door state
-        door_char = '-' if is_open else '+'
-        door_color = 'brown'
+        # Set appearance based on door state using glyph config
+        if is_open:
+            door_char, door_color = self.glyph_config.get_terrain_glyph('door_open')
+        else:
+            door_char, door_color = self.glyph_config.get_terrain_glyph('door_closed')
         self.world.add_component(entity_id, Renderable(door_char, door_color))
         
         # Add door component

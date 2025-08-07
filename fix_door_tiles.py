@@ -78,7 +78,9 @@ def fix_door_tiles_in_save(save_path):
                         # Add Renderable component
                         if 'Renderable' not in world_state['components']:
                             world_state['components']['Renderable'] = {}
-                        door_char = '-' if is_open else '+'
+                        # Use glyph config for door characters
+                        # For this utility script, we'll use the same characters as defined in glyphs.yaml
+                        door_char = '/' if is_open else '+'
                         world_state['components']['Renderable'][str(next_entity_id)] = {
                             'char': door_char,
                             'color': 'brown'

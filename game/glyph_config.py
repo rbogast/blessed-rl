@@ -7,6 +7,7 @@ import yaml
 import os
 from typing import Dict, Any, Tuple
 from utils.platform_detection import PlatformDetector
+from game.config import GameConfig
 
 
 class GlyphConfig:
@@ -100,8 +101,13 @@ class GlyphConfig:
             # Fallback for unknown terrain types
             return "?", "white"
         
-        # Get character based on current character set
-        char = self._get_character_for_set(terrain_config, "?")
+        # Select glyph based on visibility and lighting state
+        if visible and (lit or penumbra):
+            # Use normal glyphs for lit/penumbra tiles
+            char = self._get_character_for_set(terrain_config, "?")
+        else:
+            # Use explored glyphs for out-of-sight tiles
+            char = self._get_character_for_set_explored(terrain_config, "?")
         
         if visible:
             if lit:
@@ -110,9 +116,9 @@ class GlyphConfig:
                 color = terrain_config.get("visible_penumbra_color", "blue")
             else:
                 # Visible but not lit and not penumbra = outside light radius, treat as explored
-                color = terrain_config.get("explored_color", "bright_black")
+                color = terrain_config.get("explored_color", GameConfig.EXPLORED_TILE_COLOR)
         else:
-            color = terrain_config.get("explored_color", "bright_black")
+            color = terrain_config.get("explored_color", GameConfig.EXPLORED_TILE_COLOR)
         
         return char, color
     
@@ -167,6 +173,32 @@ class GlyphConfig:
             return char
         
         return fallback
+    
+    def _get_character_for_set_explored(self, config: Dict[str, Any], fallback: str) -> str:
+        """
+        Get the appropriate explored variant character for the current character set.
+        
+        Args:
+            config: Configuration dictionary containing character definitions
+            fallback: Fallback character if none found
+            
+        Returns:
+            Character string for the current character set (explored variant)
+        """
+        # Try to get explored variant for current character set
+        char = config.get(f"{self.character_set}_explored")
+        if char:
+            return char
+        
+        # Fallback hierarchy for explored variants: unicode -> ascii -> cp437
+        fallback_order = ['unicode', 'ascii', 'cp437']
+        for charset in fallback_order:
+            char = config.get(f"{charset}_explored")
+            if char:
+                return char
+        
+        # If no explored variant exists, fall back to normal character
+        return self._get_character_for_set(config, fallback)
     
     def get_character_set(self) -> str:
         """Get the current character set being used."""

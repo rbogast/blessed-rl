@@ -7,16 +7,18 @@ from components.core import Position, Blocking, Door, Renderable
 from components.combat import Health
 from game.level_world_gen import LevelWorldGenerator
 from game.config import GameConfig
+from game.glyph_config import GlyphConfig
 from typing import Set
 
 
 class MovementSystem(System):
     """Handles movement and collision detection."""
     
-    def __init__(self, world, world_generator: LevelWorldGenerator, message_log):
+    def __init__(self, world, world_generator: LevelWorldGenerator, message_log, glyph_config: GlyphConfig = None):
         super().__init__(world)
         self.world_generator = world_generator
         self.message_log = message_log
+        self.glyph_config = glyph_config or GlyphConfig()
     
     def update(self, dt: float = 0.0) -> None:
         """Movement system doesn't auto-update - it responds to action requests."""
@@ -175,9 +177,11 @@ class MovementSystem(System):
             # Open the door
             door.is_open = True
             
-            # Update visual representation
+            # Update visual representation using glyph config
             if renderable:
-                renderable.char = '-'  # Open door character
+                door_char, door_color = self.glyph_config.get_terrain_glyph('door_open')
+                renderable.char = door_char
+                renderable.color = door_color
             
             # Remove blocking component so entities can pass through
             if self.world.has_component(door_entity, Blocking):

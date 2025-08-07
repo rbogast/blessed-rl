@@ -46,7 +46,7 @@ class GameConfig:
     PLAYER_SIGHT_RADIUS = 45
     
     # Rendering colors
-    EXPLORED_TILE_COLOR = 'bright_black'  # Color for explored but not visible tiles
+    EXPLORED_TILE_COLOR = 'blue'  # Color for explored but not visible tiles
     
     @classmethod
     def get_map_bounds(cls):

@@ -77,7 +77,7 @@ class RoguelikeGame:
         self.render_system = RenderSystem(self.world, self.camera, self.message_log, 
                                         self.world_generator, self.game_state, self.tile_effects_system, self.glyph_config)
         self.input_system = InputSystem(self.world, self.game_state, self.message_log, self.render_system)
-        self.movement_system = MovementSystem(self.world, self.world_generator, self.message_log)
+        self.movement_system = MovementSystem(self.world, self.world_generator, self.message_log, self.glyph_config)
         
         # Initialize physics system after movement and render systems are created
         self.physics_system = PhysicsSystem(self.world, self.movement_system, self.message_log, 
