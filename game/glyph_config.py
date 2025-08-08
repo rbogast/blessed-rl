@@ -113,12 +113,12 @@ class GlyphConfig:
             if lit:
                 color = terrain_config.get("visible_color", "white")
             elif penumbra:
-                color = terrain_config.get("visible_penumbra_color", "blue")
+                color = GameConfig.PENUMBRA_COLOR
             else:
                 # Visible but not lit and not penumbra = outside light radius, treat as explored
-                color = terrain_config.get("explored_color", GameConfig.EXPLORED_TILE_COLOR)
+                color = GameConfig.UNLIT_COLOR
         else:
-            color = terrain_config.get("explored_color", GameConfig.EXPLORED_TILE_COLOR)
+            color = GameConfig.EXPLORED_TILE_COLOR
         
         return char, color
     

@@ -14,7 +14,7 @@ from systems.menu import MenuManager
 from ui.text_formatter import TextFormatter
 from ui.status_display import StatusDisplay
 from rendering.entity_renderer import EntityRenderer
-from rendering.tile_renderer import TileRenderer
+from rendering.unified_tile_renderer import UnifiedTileRenderer
 import blessed
 from contextlib import ExitStack
 import atexit
@@ -64,7 +64,10 @@ class RenderSystem(System):
         self.menu_manager = MenuManager(world)
         self.status_display = StatusDisplay(world, world_generator, game_state, self.text_formatter)
         self.entity_renderer = EntityRenderer(world)
-        self.tile_renderer = TileRenderer(world_generator, self.glyph_config, self.entity_renderer, game_state)
+        self.tile_renderer = UnifiedTileRenderer(world, world_generator, self.glyph_config, game_state)
+        
+        # Unified FOV/Lighting system will be set later by main.py
+        self.unified_fov_lighting = None
     
     def update(self, dt: float = 0.0) -> None:
         """Render the complete game screen."""
@@ -223,6 +226,13 @@ class RenderSystem(System):
     def set_examine_system(self, examine_system) -> None:
         """Set the examine system reference for rendering examine cursor."""
         self.tile_renderer.examine_system = examine_system
+    
+    def set_fov_system(self, fov_system) -> None:
+        """Set the unified FOV/Lighting system reference for the tile renderer."""
+        self.unified_fov_lighting = fov_system
+        self.tile_renderer.set_unified_fov_lighting(fov_system)
+        # Keep fov_system for compatibility
+        self.fov_system = fov_system
     
     def _setup_encoding(self) -> None:
         """Setup proper encoding for cross-platform compatibility."""

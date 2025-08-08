@@ -364,13 +364,13 @@ class LevelGenerator:
             disposition = DispositionType.NEUTRAL
         self.world.add_component(entity_id, Disposition(disposition))
         
-        # Special handling for cultists - equip them with torches
-        if species_name == 'cultist':
+        # Special handling for cultists and guards - equip them with torches
+        if species_name in ['cultist', 'guard']:
             # Add inventory and equipment slots
             self.world.add_component(entity_id, Inventory(capacity=10))
             self.world.add_component(entity_id, EquipmentSlots())
             
-            # Create a torch for the cultist
+            # Create a torch for the character
             item_factory = ItemFactory(self.world)
             torch_entity = item_factory.create_item('torch')
             

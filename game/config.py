@@ -43,6 +43,8 @@ class GameConfig:
     
     # Rendering colors
     EXPLORED_TILE_COLOR = 'blue'  # Color for explored but not visible tiles
+    PENUMBRA_COLOR = 'blue'      # Color for tiles in penumbra (dim lighting)
+    UNLIT_COLOR = 'blue'         # Color for tiles in FOV but outside light radius
     
     @classmethod
     def get_map_bounds(cls):

@@ -130,7 +130,7 @@ class InputSystem(System):
                 return True
         # Check if a menu is active
         elif self.render_system and self._is_menu_active():
-            # In menu mode - handle navigation and selection
+            # In menu mode - handle input directly without state machine for now
             if key_str == '8':  # Numpad 8 - navigate up
                 self._navigate_menu_up()
                 return True
@@ -141,7 +141,7 @@ class InputSystem(System):
                 self._select_highlighted_item()
                 return True
             elif key_str.isdigit() and key_str != '0':
-                # Direct number selection still works
+                # Direct number selection - this should always work consistently
                 self._select_item(int(key_str))
                 return True
         else:

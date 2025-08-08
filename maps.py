@@ -14,7 +14,7 @@ from game.game_state import GameStateManager, GameState
 from game.glyph_config import GlyphConfig
 from game.config import GameConfig
 from systems.input import InputSystem
-from systems.fov import FOVSystem
+from systems.unified_fov_lighting import UnifiedFOVLightingSystem
 from systems.render import RenderSystem
 
 
@@ -136,7 +136,7 @@ class MapPreviewTool:
         
         self.render_system.menu_manager.is_menu_active = custom_is_menu_active
         self.input_system = InputSystem(self.world, self.game_state, self.message_log, self.render_system)
-        self.fov_system = FOVSystem(self.world, self.world_generator, message_log=self.message_log)
+        self.fov_system = UnifiedFOVLightingSystem(self.world, self.world_generator, message_log=self.message_log)
         
         # Enable preview mode in FOV system
         self.fov_system.set_preview_mode(True)

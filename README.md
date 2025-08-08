@@ -122,7 +122,7 @@ The game uses a clean Entity Component System architecture:
 ### Key Systems
 
 - **LevelGenerator**: Procedural dungeon level generation
-- **FOVSystem**: Recursive shadowcasting for field of view
+- **UnifiedFOVLightingSystem**: Unified field of view and lighting system
 - **MovementSystem**: Handles entity movement and collision
 - **CombatSystem**: Turn-based combat resolution
 - **AISystem**: Enemy behavior and pathfinding

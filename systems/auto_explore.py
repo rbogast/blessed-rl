@@ -9,7 +9,7 @@ from components.combat import Health
 from components.ai import AI
 from components.auto_explore import AutoExplore, AutoExploreState, ExploreTarget, ExploreTargetType
 from systems.movement import MovementSystem
-from systems.fov import FOVSystem
+from systems.unified_fov_lighting import UnifiedFOVLightingSystem
 from utils.pathfinding import Pathfinder
 from typing import List, Tuple, Optional, Set
 from game.config import GameConfig
@@ -18,7 +18,7 @@ from game.config import GameConfig
 class AutoExploreSystem(System):
     """Handles automated exploration behavior."""
     
-    def __init__(self, world, movement_system: MovementSystem, fov_system: FOVSystem, 
+    def __init__(self, world, movement_system: MovementSystem, fov_system: UnifiedFOVLightingSystem, 
                  world_generator, message_log):
         super().__init__(world)
         self.movement_system = movement_system

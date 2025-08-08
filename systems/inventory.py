@@ -17,15 +17,12 @@ class InventorySystem(System):
         super().__init__(world)
         self.message_log = message_log
         self.render_system = None  # Will be set by the main game
-        self.fov_system = None  # Will be set by the main game
+        # No longer need complex lighting event manager
     
     def set_render_system(self, render_system):
         """Set the render system reference for menu invalidation."""
         self.render_system = render_system
     
-    def set_fov_system(self, fov_system):
-        """Set the FOV system reference for lighting recalculation."""
-        self.fov_system = fov_system
     
     def _invalidate_inventory_menu(self):
         """Invalidate the inventory menu cache to force refresh."""
@@ -182,9 +179,7 @@ class InventorySystem(System):
         if self._handle_light_activation(item_entity_id):
             light_state_changed = True
         
-        # Trigger immediate lighting recalculation if any light state changed
-        if light_state_changed and self.fov_system:
-            self.fov_system.on_light_state_changed(entity_id)
+        # Light state changes will be handled by the next FOV update
         
         # Get item name for message
         item = self.world.get_component(item_entity_id, Item)
@@ -221,15 +216,7 @@ class InventorySystem(System):
             # Add the unequipped item back to inventory
             inventory.add_item(unequipped_item)
             
-            # Trigger immediate lighting recalculation if light state changed
-            if light_deactivated and self.fov_system:
-                self.fov_system.on_light_state_changed(entity_id)
-                # Also invalidate render cache and request render
-                if self.render_system:
-                    self.render_system.invalidate_cache()
-                    # Request immediate render update
-                    if hasattr(self.render_system, 'game_state'):
-                        self.render_system.game_state.request_render()
+            # Light state changes will be handled by the next FOV update
             
             # Get item name for message
             item = self.world.get_component(unequipped_item, Item)

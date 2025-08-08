@@ -24,9 +24,9 @@ from systems.movement import MovementSystem
 from systems.combat import CombatSystem
 from systems.inventory import InventorySystem
 from systems.ai import AISystem
-from systems.fov import FOVSystem
-from systems.lighting import LightingSystem
+from systems.unified_fov_lighting import UnifiedFOVLightingSystem
 from systems.render import RenderSystem
+from rendering.unified_tile_renderer import UnifiedTileRenderer
 from systems.skills import SkillsSystem
 from systems.throwing import ThrowingSystem
 from systems.auto_explore import AutoExploreSystem
@@ -87,14 +87,14 @@ class RoguelikeGame:
         self.combat_system = CombatSystem(self.world, self.game_state, self.message_log, self.effects_manager, self.world_generator)
         self.skills_system = SkillsSystem(self.world, self.message_log)
         self.ai_system = AISystem(self.world, self.movement_system, self.combat_system, self.message_log)
-        self.lighting_system = LightingSystem(self.world, self.message_log)
-        self.fov_system = FOVSystem(self.world, self.world_generator, message_log=self.message_log, lighting_system=self.lighting_system)
+        self.unified_fov_lighting = UnifiedFOVLightingSystem(self.world, self.world_generator, message_log=self.message_log)
+        # Keep fov_system as an alias for compatibility with other systems
+        self.fov_system = self.unified_fov_lighting
         
-        # Initialize inventory system with FOV system reference
+        # Initialize inventory system (no complex lighting event manager needed)
         self.inventory_system = InventorySystem(self.world, self.message_log)
-        # Set render system and FOV system references
+        # Set render system reference
         self.inventory_system.set_render_system(self.render_system)
-        self.inventory_system.set_fov_system(self.fov_system)
         
         self.throwing_system = ThrowingSystem(self.world, self.movement_system, self.fov_system, 
                                             self.physics_system, self.skills_system, self.message_log)
@@ -111,6 +111,9 @@ class RoguelikeGame:
         
         # Set examine system reference in render system for cursor visualization
         self.render_system.set_examine_system(self.examine_system)
+        
+        # Set FOV system reference in render system for layered rendering
+        self.render_system.set_fov_system(self.fov_system)
         
         # Initialize helper classes
         self.level_manager = LevelManager(self.world, self.world_generator, self.game_state, 
@@ -360,12 +363,6 @@ class RoguelikeGame:
     
     def _update_world(self) -> None:
         """Update all world systems after player action."""
-        # Update lighting system first (fuel depletion)
-        self.lighting_system.update()
-        
-        # Update FOV (which now uses lighting for sight radius and processes events)
-        self.fov_system.update()
-        
         # Update auto-explore system (before AI so it can move the player)
         self.auto_explore_system.update()
         
@@ -378,8 +375,8 @@ class RoguelikeGame:
         # Update AI
         self.ai_system.update()
         
-        # Update FOV again after AI movement (in case NPCs with lights moved)
-        self.fov_system.update()
+        # Update unified FOV/Lighting system ONCE at the end after all movement changes
+        self.unified_fov_lighting.update()
     
     def _is_auto_exploring(self, player_entity: int) -> bool:
         """Check if the player is currently auto-exploring."""
