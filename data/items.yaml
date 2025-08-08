@@ -178,7 +178,7 @@ items:
     value: 8
     fuel: 1000
     brightness: 3
-    char: "ô"
+    char: "\u00F4"
     color: "yellow"
     physics:
       mass: 1.5
