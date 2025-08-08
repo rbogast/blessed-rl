@@ -5,7 +5,7 @@
 terrain:
   floor:
     # Lit and penumbra states - original glyph
-    unicode: "·"
+    unicode: "\u00B7"
     ascii: "·"
     cp437: "·"  # CP437 interpunct (character 250)
     # Out of sight explored state - interpunct glyph
@@ -15,11 +15,11 @@ terrain:
     visible_color: "white"
   wall:
     # Lit and penumbra states - medium shade (current)
-    unicode: "▒"
+    unicode: "\u2592"
     ascii: "#"
     cp437: "▒"  # CP437 medium shade (character 177)
     # Out of sight explored state - light shade
-    unicode_explored: "░"
+    unicode_explored: "\u2591"
     ascii_explored: "#"
     cp437_explored: "░"  # CP437 light shade (character 176)
     visible_color: "yellow"
@@ -44,12 +44,12 @@ terrain:
     cp437: "<"
     visible_color: "white"
   pine_tree:
-    unicode: "♠"
+    unicode: "\u2660"
     ascii: "P"
     cp437: "♠"
     visible_color: "green"
   oak_tree:
-    unicode: "♣"
+    unicode: "\u2663"
     ascii: "&"
     cp437: "♣"
     visible_color: "green"

@@ -54,6 +54,8 @@ class MovementSystem(System):
         
         # Check for collision
         if self._is_position_blocked(new_x, new_y, entity_id):
+            # Handle dark vision bumping exploration for player entities
+            self._handle_bump_exploration(entity_id, new_x, new_y)
             return False
         
         # Move the entity
@@ -203,6 +205,47 @@ class MovementSystem(System):
             # Log the action
             if self.message_log:
                 self.message_log.add_info("You open the door.")
+    
+    def _handle_bump_exploration(self, entity_id: int, bump_x: int, bump_y: int) -> None:
+        """Handle exploration when an entity bumps into a wall while using dark vision."""
+        from components.core import Player
+        from components.character import DarkVision
+        from components.items import EquipmentSlots, LightEmitter
+        
+        # Only handle bumping for player entities
+        if not self.world.has_component(entity_id, Player):
+            return
+        
+        # Check if player has any light sources
+        equipment_slots = self.world.get_component(entity_id, EquipmentSlots)
+        has_light = False
+        
+        if equipment_slots and equipment_slots.accessory:
+            light = self.world.get_component(equipment_slots.accessory, LightEmitter)
+            if light and light.active:
+                has_light = True
+        
+        # Only explore on bump if player has no light source (using dark vision)
+        if has_light:
+            return
+        
+        # Check if player has dark vision component
+        dark_vision = self.world.get_component(entity_id, DarkVision)
+        if not dark_vision:
+            return
+        
+        # Check if the bumped position is a wall and within bounds
+        if (GameConfig.is_valid_position(bump_x, bump_y) and 
+            self.world_generator.is_wall_at(bump_x, bump_y)):
+            
+            # Mark the wall tile as explored
+            tile = self.world_generator.get_tile_at(bump_x, bump_y)
+            if tile and not tile.explored:
+                tile.explored = True
+                
+                # Log the bump exploration if message log is available
+                if self.message_log:
+                    self.message_log.add_info("You feel around in the darkness.")
     
     def _emit_movement_event(self, entity_id: int, old_pos: tuple, new_pos: tuple) -> None:
         """Emit a movement event when an entity moves."""

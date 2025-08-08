@@ -141,6 +141,7 @@ class SaveSystem:
             'game_over_reason': game_state.game_over_reason,
             'final_position': game_state.final_position,
             'needs_render': game_state.needs_render,
+            'is_in_automated_action': game_state.is_in_automated_action,
             'current_level_id': game_state.get_current_level_id()
         }
     
@@ -420,6 +421,8 @@ class SaveSystem:
         game_state.game_over_reason = None
         game_state.final_position = None  # Don't restore final position either
         game_state.needs_render = True  # Always need render after load
+        # Restore automation state (with fallback for older saves)
+        game_state.is_in_automated_action = game_data.get('is_in_automated_action', False)
         game_state.dungeon_manager.current_level_id = game_data['current_level_id']
         
         print(f"DEBUG: Restored game state - level: {game_data['current_level_id']}, turn: {game_data['turn_count']}")

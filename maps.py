@@ -14,7 +14,7 @@ from game.game_state import GameStateManager, GameState
 from game.glyph_config import GlyphConfig
 from game.config import GameConfig
 from systems.input import InputSystem
-from systems.unified_fov_lighting import UnifiedFOVLightingSystem
+from systems.simple_lighting_system import SimpleLightingSystem
 from systems.render import RenderSystem
 
 
@@ -136,10 +136,7 @@ class MapPreviewTool:
         
         self.render_system.menu_manager.is_menu_active = custom_is_menu_active
         self.input_system = InputSystem(self.world, self.game_state, self.message_log, self.render_system)
-        self.fov_system = UnifiedFOVLightingSystem(self.world, self.world_generator, message_log=self.message_log)
-        
-        # Enable preview mode in FOV system
-        self.fov_system.set_preview_mode(True)
+        self.fov_system = SimpleLightingSystem(self.world, self.world_generator, message_log=self.message_log)
         
         # Add systems to world
         self.world.systems.add_system(self.input_system)
@@ -410,9 +407,8 @@ class MapPreviewTool:
             self._generate_current_level()
             self._recreate_player()
             
-            # Force FOV system to recalculate by clearing its cache
-            self.fov_system.last_player_pos = None
-            self.fov_system.previously_visible_tiles.clear()
+            # Force FOV system to recalculate
+            self.fov_system.force_recalculation()
             
             # Update FOV after regenerating the level
             self.fov_system.update()
@@ -434,9 +430,8 @@ class MapPreviewTool:
         self._generate_current_level()
         self._recreate_player()
         
-        # Force FOV system to recalculate by clearing its cache
-        self.fov_system.last_player_pos = None
-        self.fov_system.previously_visible_tiles.clear()
+        # Force FOV system to recalculate
+        self.fov_system.force_recalculation()
         
         # Update FOV after regenerating the level
         self.fov_system.update()
@@ -542,8 +537,7 @@ class MapPreviewTool:
                 self._update_parameter_order()
                 
                 # Force FOV system to recalculate
-                self.fov_system.last_player_pos = None
-                self.fov_system.previously_visible_tiles.clear()
+                self.fov_system.force_recalculation()
                 self.fov_system.update()
                 
                 # Invalidate render cache
@@ -591,8 +585,7 @@ class MapPreviewTool:
         self._recreate_player()
         
         # Force FOV system to recalculate
-        self.fov_system.last_player_pos = None
-        self.fov_system.previously_visible_tiles.clear()
+        self.fov_system.force_recalculation()
         self.fov_system.update()
         
         # Invalidate render cache

@@ -66,8 +66,11 @@ class RenderSystem(System):
         self.entity_renderer = EntityRenderer(world)
         self.tile_renderer = UnifiedTileRenderer(world, world_generator, self.glyph_config, game_state)
         
-        # Unified FOV/Lighting system will be set later by main.py
-        self.unified_fov_lighting = None
+        # Simple lighting system will be set later by main.py
+        self.simple_lighting = None
+        
+        # Register for movement events to invalidate cache
+        self.world.event_manager.subscribe('entity_moved', self._on_entity_moved)
     
     def update(self, dt: float = 0.0) -> None:
         """Render the complete game screen."""
@@ -214,10 +217,15 @@ class RenderSystem(System):
         """Get the currently selected menu item number (1-based) or -1 if none."""
         return self.menu_manager.get_selected_item_number()
     
-    # Cache management - delegate to EntityRenderer
+    # Cache management - delegate to both renderers
     def invalidate_cache(self) -> None:
-        """Mark the entity cache as dirty."""
+        """Mark all caches as dirty."""
         self.entity_renderer.invalidate_cache()
+        self.tile_renderer.invalidate_cache()
+    
+    def invalidate_position(self, world_x: int, world_y: int) -> None:
+        """Invalidate cache for a specific position."""
+        self.tile_renderer.invalidate_position(world_x, world_y)
     
     def set_throwing_system(self, throwing_system) -> None:
         """Set the throwing system reference for rendering throwing cursor and line."""
@@ -228,8 +236,8 @@ class RenderSystem(System):
         self.tile_renderer.examine_system = examine_system
     
     def set_fov_system(self, fov_system) -> None:
-        """Set the unified FOV/Lighting system reference for the tile renderer."""
-        self.unified_fov_lighting = fov_system
+        """Set the simple lighting system reference for the tile renderer."""
+        self.simple_lighting = fov_system
         self.tile_renderer.set_unified_fov_lighting(fov_system)
         # Keep fov_system for compatibility
         self.fov_system = fov_system
@@ -281,6 +289,15 @@ class RenderSystem(System):
             if charset in test_chars:
                 char_list = ', '.join(test_chars[charset])
                 self.message_log.add_system(f"Test chars: {char_list}")
+    
+    def _on_entity_moved(self, event) -> None:
+        """Handle entity movement events by invalidating cache for affected positions."""
+        # Invalidate cache for both old and new positions
+        old_x, old_y = event.old_pos
+        new_x, new_y = event.new_pos
+        
+        self.invalidate_position(old_x, old_y)
+        self.invalidate_position(new_x, new_y)
     
     def cleanup(self) -> None:
         """Clean up terminal state."""

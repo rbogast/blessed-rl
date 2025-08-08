@@ -1,8 +1,8 @@
 """
-Simplified tile renderer that uses clean data from UnifiedFOVLightingSystem.
+Simplified tile renderer that uses clean data from SimpleLightingSystem.
 
 This renderer is much simpler than LayeredTileRenderer because it receives
-clean, consistent data from the unified system. No more emergency fallbacks
+clean, consistent data from the simple lighting system. No more emergency fallbacks
 or complex state checking - just render what we're told.
 """
 
@@ -20,10 +20,10 @@ class CompositeLayer:
 
 class UnifiedTileRenderer:
     """
-    Simplified tile renderer that uses clean data from UnifiedFOVLightingSystem.
+    Simplified tile renderer that uses clean data from SimpleLightingSystem.
     
     This renderer trusts the data it receives and doesn't need to make decisions
-    about visibility or lighting - that's all handled by the unified system.
+    about visibility or lighting - that's all handled by the simple lighting system.
     """
     
     def __init__(self, world, world_generator, glyph_config, game_state=None, 
@@ -36,11 +36,13 @@ class UnifiedTileRenderer:
         self.examine_system = examine_system
         self.unified_fov_lighting = unified_fov_lighting
         
-        # Cached rendered tiles - only recalculated when in FOV
+        # Simple tile cache for FOV tiles only
         self.tile_cache: Dict[Tuple[int, int], CompositeLayer] = {}
         
-        # Current turn counter for cache invalidation
-        self.current_turn = 0
+        # Spatial entity indexing for performance
+        self.entity_spatial_index: Dict[Tuple[int, int], list] = {}
+        self.visible_entities_index: Dict[Tuple[int, int], Optional[CompositeLayer]] = {}
+        self.spatial_index_dirty = True
     
     def set_unified_fov_lighting(self, unified_fov_lighting) -> None:
         """Set the unified FOV lighting system reference."""
@@ -81,7 +83,7 @@ class UnifiedTileRenderer:
             return self._get_explored_tile_display(world_x, world_y, tile)
     
     def _get_explored_tile_display(self, world_x: int, world_y: int, tile) -> Tuple[str, str]:
-        """Get the display for an explored but not visible tile."""
+        """Get the display for an explored but not visible tile (simple, no caching)."""
         # Get explored terrain glyph (not visible, so use explored variant)
         terrain_char, terrain_color = self.glyph_config.get_terrain_glyph(
             tile.tile_type, visible=False, lit=False, penumbra=False
@@ -176,26 +178,16 @@ class UnifiedTileRenderer:
     
     def _render_item_layer(self, world_x: int, world_y: int, tile) -> Optional[CompositeLayer]:
         """Render non-character entities (items, corpses, etc.)."""
-        from components.core import Position, Renderable, Player
-        from components.items import Pickupable
-        from components.ai import AI
         from components.corpse import Corpse
+        from components.items import Pickupable
         
-        # Get all entities at this position
-        entities = self.world.get_entities_with_components(Position, Renderable)
-        entities_at_pos = []
+        # Rebuild spatial index if dirty
+        if self.spatial_index_dirty:
+            self._rebuild_spatial_index()
         
-        for entity_id in entities:
-            position = self.world.get_component(entity_id, Position)
-            if position and position.x == world_x and position.y == world_y:
-                # Skip player and AI entities (they go in character layer)
-                if (self.world.has_component(entity_id, Player) or 
-                    self.world.has_component(entity_id, AI)):
-                    continue
-                
-                renderable = self.world.get_component(entity_id, Renderable)
-                if renderable:
-                    entities_at_pos.append((entity_id, renderable.char, renderable.color))
+        # Get entities at this position from spatial index
+        pos = (world_x, world_y)
+        entities_at_pos = self.entity_spatial_index.get(pos, [])
         
         if not entities_at_pos:
             return None
@@ -235,59 +227,44 @@ class UnifiedTileRenderer:
     
     def _render_character_layer(self, world_x: int, world_y: int, tile) -> Optional[CompositeLayer]:
         """Render character entities (player, NPCs) that are currently visible."""
-        from components.core import Position, Renderable, Player, Visible
+        from components.core import Player, Visible
         from components.ai import AI
         
-        # Get character entities at this position
-        entities = self.world.get_entities_with_components(Position, Renderable)
-        character_entities = []
+        # Rebuild spatial index if dirty
+        if self.spatial_index_dirty:
+            self._rebuild_spatial_index()
         
-        for entity_id in entities:
-            position = self.world.get_component(entity_id, Position)
+        # Check for player first (most common case)
+        player_entity = self.game_state.get_player_entity() if self.game_state else None
+        if player_entity:
+            from components.core import Position, Renderable
+            position = self.world.get_component(player_entity, Position)
             if position and position.x == world_x and position.y == world_y:
-                # Only include player and AI entities
-                if (self.world.has_component(entity_id, Player) or 
-                    self.world.has_component(entity_id, AI)):
-                    
-                    # Check if entity should be visible
-                    if self.world.has_component(entity_id, Player):
-                        # Player is always visible if tile is in FOV
-                        renderable = self.world.get_component(entity_id, Renderable)
-                        if renderable:
-                            character_entities.append((entity_id, renderable.char, renderable.color))
-                    else:
-                        # AI entities need to be marked as visible by the unified system
-                        visible = self.world.get_component(entity_id, Visible)
-                        if visible and visible.visible:
-                            renderable = self.world.get_component(entity_id, Renderable)
-                            if renderable:
-                                character_entities.append((entity_id, renderable.char, renderable.color))
+                renderable = self.world.get_component(player_entity, Renderable)
+                if renderable:
+                    return CompositeLayer(renderable.char, renderable.color)
         
-        if character_entities:
-            # Player takes priority over NPCs
-            for entity_id, char, color in character_entities:
-                if self.world.has_component(entity_id, Player):
+        # Check for visible AI entities at this position
+        pos = (world_x, world_y)
+        entities_at_pos = self.entity_spatial_index.get(pos, [])
+        
+        for entity_id, char, color in entities_at_pos:
+            if self.world.has_component(entity_id, AI):
+                visible = self.world.get_component(entity_id, Visible)
+                if visible and visible.visible:
                     return CompositeLayer(char, color)
-            
-            # No player, return first NPC
-            return CompositeLayer(character_entities[0][1], character_entities[0][2])
         
         return None
     
     def _render_last_seen_character_layer(self, world_x: int, world_y: int, tile) -> Optional[CompositeLayer]:
         """Render last seen character entities for explored but not visible tiles."""
-        from components.core import Visible
+        # Rebuild spatial index if dirty
+        if self.spatial_index_dirty:
+            self._rebuild_spatial_index()
         
-        # Look for entities that were last seen at this position
-        all_entities = self.world.get_entities_with_components(Visible)
-        for entity_id in all_entities:
-            visible = self.world.get_component(entity_id, Visible)
-            if (visible and visible.explored and 
-                visible.last_seen_x == world_x and visible.last_seen_y == world_y and
-                visible.last_seen_char and visible.last_seen_color):
-                return CompositeLayer(visible.last_seen_char, visible.last_seen_color)
-        
-        return None
+        # Use spatial index for fast lookup
+        pos = (world_x, world_y)
+        return self.visible_entities_index.get(pos)
     
     def _render_overlay_layer(self, world_x: int, world_y: int, tile) -> Optional[CompositeLayer]:
         """Render special overlays like examine cursor and throwing cursor."""
@@ -405,17 +382,63 @@ class UnifiedTileRenderer:
         
         return False
     
+    def _rebuild_spatial_index(self) -> None:
+        """Rebuild the spatial entity index for fast position-based lookups."""
+        from components.core import Position, Renderable, Player
+        from components.ai import AI
+        
+        self.entity_spatial_index.clear()
+        self.visible_entities_index.clear()
+        
+        # Index all entities with position and renderable components
+        entities = self.world.get_entities_with_components(Position, Renderable)
+        for entity_id in entities:
+            position = self.world.get_component(entity_id, Position)
+            renderable = self.world.get_component(entity_id, Renderable)
+            
+            if position and renderable:
+                pos = (position.x, position.y)
+                
+                # Skip player and AI entities for item layer (they go in character layer)
+                if not (self.world.has_component(entity_id, Player) or 
+                       self.world.has_component(entity_id, AI)):
+                    if pos not in self.entity_spatial_index:
+                        self.entity_spatial_index[pos] = []
+                    self.entity_spatial_index[pos].append((entity_id, renderable.char, renderable.color))
+                else:
+                    # Include AI entities in spatial index for character layer optimization
+                    if self.world.has_component(entity_id, AI):
+                        if pos not in self.entity_spatial_index:
+                            self.entity_spatial_index[pos] = []
+                        self.entity_spatial_index[pos].append((entity_id, renderable.char, renderable.color))
+        
+        # Index last seen character positions
+        from components.core import Visible
+        visible_entities = self.world.get_entities_with_components(Visible)
+        for entity_id in visible_entities:
+            visible = self.world.get_component(entity_id, Visible)
+            if (visible and visible.explored and 
+                visible.last_seen_x is not None and visible.last_seen_y is not None and
+                visible.last_seen_char and visible.last_seen_color):
+                pos = (visible.last_seen_x, visible.last_seen_y)
+                self.visible_entities_index[pos] = CompositeLayer(visible.last_seen_char, visible.last_seen_color)
+        
+        self.spatial_index_dirty = False
+    
     def invalidate_cache(self) -> None:
         """Invalidate the entire tile cache (for major changes)."""
         self.tile_cache.clear()
+        self.spatial_index_dirty = True
     
     def invalidate_position(self, world_x: int, world_y: int) -> None:
         """Invalidate cache for a specific position."""
         pos = (world_x, world_y)
         if pos in self.tile_cache:
             del self.tile_cache[pos]
+        # Mark spatial index as dirty when entities move
+        self.spatial_index_dirty = True
     
     def update_fov(self, fov_positions: set) -> None:
         """Update the set of positions currently in FOV (for compatibility)."""
         # This is handled by the unified system now, but keep for compatibility
-        self.current_turn += 1
+        pass

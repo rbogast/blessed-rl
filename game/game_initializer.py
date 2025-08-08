@@ -5,7 +5,7 @@ Game initialization and setup logic.
 import random
 from components.core import Position, Renderable, Player, Blocking, Visible
 from components.combat import Health, Stats
-from components.character import CharacterAttributes, Experience
+from components.character import CharacterAttributes, Experience, DarkVision
 from components.effects import Physics
 from components.items import Inventory, EquipmentSlots
 from components.corpse import Species
@@ -94,6 +94,7 @@ class GameInitializer:
         self.world.add_component(player_entity, EquipmentSlots())
         self.world.add_component(player_entity, Skills())  # Add skills component
         self.world.add_component(player_entity, Species('human'))  # Player is human
+        self.world.add_component(player_entity, DarkVision(radius=0))  # Start with no dark vision
     
     def _find_spawn_position(self, level) -> tuple:
         """Find a safe spawn position in the level."""

@@ -29,6 +29,12 @@ class GameStateManager:
         self.final_position = 0
         self.needs_render = True  # Flag to control when screen should be redrawn
         
+        # Turn timing for performance monitoring
+        self.last_turn_time_ms = 0.0
+        
+        # Automation state tracking (prevents auto-save during automated actions)
+        self.is_in_automated_action = False
+        
         # Dungeon management
         self.dungeon_manager = DungeonManager(persistent_levels=GameConfig.PERSISTENT_LEVELS)
     
@@ -65,6 +71,14 @@ class GameStateManager:
         """Reset the player action flag for the next turn."""
         self.player_acted = False
     
+    def set_last_turn_time(self, time_ms: float) -> None:
+        """Set the time taken for the last turn in milliseconds."""
+        self.last_turn_time_ms = time_ms
+    
+    def get_last_turn_time(self) -> float:
+        """Get the time taken for the last turn in milliseconds."""
+        return self.last_turn_time_ms
+    
     def has_player_acted(self) -> bool:
         """Check if the player has acted this turn."""
         return self.player_acted
@@ -92,6 +106,18 @@ class GameStateManager:
         """Mark that the screen has been redrawn."""
         self.needs_render = False
     
+    def start_automated_action(self) -> None:
+        """Mark that an automated action sequence has started (prevents auto-save)."""
+        self.is_in_automated_action = True
+    
+    def end_automated_action(self) -> None:
+        """Mark that an automated action sequence has ended (allows auto-save)."""
+        self.is_in_automated_action = False
+    
+    def is_automated_action_active(self) -> bool:
+        """Check if an automated action is currently active."""
+        return self.is_in_automated_action
+    
     def reset(self) -> None:
         """Reset the game state to initial values."""
         self.current_state = GameState.PLAYING
@@ -101,6 +127,7 @@ class GameStateManager:
         self.game_over_reason = ""
         self.final_position = 0
         self.needs_render = True
+        self.is_in_automated_action = False
         self.dungeon_manager.clear_all_levels()  # Clear all dungeon levels
     
     # Dungeon level management methods

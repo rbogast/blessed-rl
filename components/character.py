@@ -87,3 +87,10 @@ class XPValue(Component):
     
     def __init__(self, xp_value: int):
         self.xp_value = xp_value
+
+
+class DarkVision(Component):
+    """Dark vision component that allows entities to see in darkness."""
+    
+    def __init__(self, radius: int = 0):
+        self.radius = radius  # How far this entity can see in complete darkness

@@ -230,8 +230,14 @@ class StatusDisplay:
             else:
                 biome_name = "unknown"
         
-        # Build status line
-        status = f"{biome_name} | D: {current_level_id} | {position.x}, {position.y} | Turn: {self.game_state.turn_count}"
+        # Get turn timing
+        turn_time = self.game_state.get_last_turn_time()
+        
+        # Build status line with timing
+        if turn_time > 0:
+            status = f"{biome_name} | D: {current_level_id} | {position.x}, {position.y} | Turn: {self.game_state.turn_count} | {turn_time:.1f}ms"
+        else:
+            status = f"{biome_name} | D: {current_level_id} | {position.x}, {position.y} | Turn: {self.game_state.turn_count}"
         
         # Pad or truncate to map width only
         map_width = GameConfig.MAP_WIDTH

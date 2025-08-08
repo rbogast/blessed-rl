@@ -24,7 +24,7 @@ from systems.movement import MovementSystem
 from systems.combat import CombatSystem
 from systems.inventory import InventorySystem
 from systems.ai import AISystem
-from systems.unified_fov_lighting import UnifiedFOVLightingSystem
+from systems.simple_lighting_system import SimpleLightingSystem
 from systems.render import RenderSystem
 from rendering.unified_tile_renderer import UnifiedTileRenderer
 from systems.skills import SkillsSystem
@@ -87,9 +87,9 @@ class RoguelikeGame:
         self.combat_system = CombatSystem(self.world, self.game_state, self.message_log, self.effects_manager, self.world_generator)
         self.skills_system = SkillsSystem(self.world, self.message_log)
         self.ai_system = AISystem(self.world, self.movement_system, self.combat_system, self.message_log)
-        self.unified_fov_lighting = UnifiedFOVLightingSystem(self.world, self.world_generator, message_log=self.message_log)
+        self.simple_lighting = SimpleLightingSystem(self.world, self.world_generator, message_log=self.message_log)
         # Keep fov_system as an alias for compatibility with other systems
-        self.fov_system = self.unified_fov_lighting
+        self.fov_system = self.simple_lighting
         
         # Initialize inventory system (no complex lighting event manager needed)
         self.inventory_system = InventorySystem(self.world, self.message_log)
@@ -102,6 +102,8 @@ class RoguelikeGame:
         # Initialize auto-explore system
         self.auto_explore_system = AutoExploreSystem(self.world, self.movement_system, self.fov_system,
                                                     self.world_generator, self.message_log)
+        # Set game state reference for automation tracking
+        self.auto_explore_system.set_game_state(self.game_state)
         
         # Initialize examine system
         self.examine_system = ExamineSystem(self.world, self.fov_system, self.message_log, self.world_generator)
@@ -228,17 +230,34 @@ class RoguelikeGame:
                         action_taken = self.input_system.handle_input(key)
                         
                         if action_taken:
-                            # Auto-save at the beginning of the turn (traditional roguelike style)
+                            # Measure turn processing time with breakdown
+                            import time
+                            turn_start = time.perf_counter()
+                            
+                            # Auto-save timing
+                            save_start = time.perf_counter()
                             self._auto_save()
+                            save_time = (time.perf_counter() - save_start) * 1000.0
                             
                             # Process the player's action
+                            action_start = time.perf_counter()
                             self._process_player_action()
+                            action_time = (time.perf_counter() - action_start) * 1000.0
                             
                             # Mark that player has acted
                             self.game_state.player_turn_taken()
                             
                             # Update world (AI, etc.)
+                            world_start = time.perf_counter()
                             self._update_world()
+                            world_time = (time.perf_counter() - world_start) * 1000.0
+                            
+                            # Calculate total turn time
+                            turn_end = time.perf_counter()
+                            turn_time_ms = (turn_end - turn_start) * 1000.0
+                            
+                            # Store detailed timing (for debugging)
+                            self.game_state.set_last_turn_time(turn_time_ms)
                             
                             # Reset turn flag for next turn
                             self.game_state.reset_turn_flag()
@@ -375,8 +394,8 @@ class RoguelikeGame:
         # Update AI
         self.ai_system.update()
         
-        # Update unified FOV/Lighting system ONCE at the end after all movement changes
-        self.unified_fov_lighting.update()
+        # Update simple lighting system ONCE at the end after all movement changes
+        self.simple_lighting.update()
     
     def _is_auto_exploring(self, player_entity: int) -> bool:
         """Check if the player is currently auto-exploring."""
@@ -424,22 +443,28 @@ class RoguelikeGame:
             self.game_state.request_render()
     
     def _auto_save(self) -> None:
-        """Auto-save the game state at the beginning of each turn."""
-        try:
-            success = self.save_system.save_game(
-                self.world, 
-                self.game_state, 
-                self.message_log, 
-                self.camera, 
-                self.world_generator
-            )
-            if not success:
-                # Save failed, but don't interrupt gameplay
-                # Could add a subtle indicator or log message here
-                pass
-        except Exception as e:
-            # Save failed, but don't crash the game
-            print(f"Auto-save failed: {e}")
+        """Auto-save the game state periodically instead of every turn."""
+        # Skip auto-save during automated actions (auto-explore, travel, animations, etc.)
+        if self.game_state.is_automated_action_active():
+            return
+        
+        # Only auto-save every 10 turns to reduce I/O overhead
+        if self.game_state.turn_count % 10 == 0:
+            try:
+                success = self.save_system.save_game(
+                    self.world, 
+                    self.game_state, 
+                    self.message_log, 
+                    self.camera, 
+                    self.world_generator
+                )
+                if not success:
+                    # Save failed, but don't interrupt gameplay
+                    # Could add a subtle indicator or log message here
+                    pass
+            except Exception as e:
+                # Save failed, but don't crash the game
+                print(f"Auto-save failed: {e}")
     
     def load_saved_game(self) -> bool:
         """Load a saved game. Returns True if successful."""

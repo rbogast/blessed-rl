@@ -9,7 +9,7 @@ from components.combat import Health
 from components.ai import AI
 from components.auto_explore import AutoExplore, AutoExploreState, ExploreTarget, ExploreTargetType
 from systems.movement import MovementSystem
-from systems.unified_fov_lighting import UnifiedFOVLightingSystem
+from systems.simple_lighting_system import SimpleLightingSystem
 from utils.pathfinding import Pathfinder
 from typing import List, Tuple, Optional, Set
 from game.config import GameConfig
@@ -18,7 +18,7 @@ from game.config import GameConfig
 class AutoExploreSystem(System):
     """Handles automated exploration behavior."""
     
-    def __init__(self, world, movement_system: MovementSystem, fov_system: UnifiedFOVLightingSystem, 
+    def __init__(self, world, movement_system: MovementSystem, fov_system: SimpleLightingSystem, 
                  world_generator, message_log):
         super().__init__(world)
         self.movement_system = movement_system
@@ -32,6 +32,13 @@ class AutoExploreSystem(System):
         # Cache for performance
         self._enemy_cache = set()
         self._last_enemy_scan = 0
+        
+        # Reference to game state for automation tracking
+        self.game_state = None
+    
+    def set_game_state(self, game_state) -> None:
+        """Set the game state reference for automation tracking."""
+        self.game_state = game_state
         
     def update(self, dt: float = 0.0) -> None:
         """Update auto-exploration for all entities with AutoExplore component."""
@@ -86,6 +93,9 @@ class AutoExploreSystem(System):
         if not targets:
             # No targets found - auto-explore complete
             auto_explore.deactivate()
+            # Clear automation flag when auto-explore ends
+            if self.game_state:
+                self.game_state.end_automated_action()
             self.message_log.add_info("Auto-explore complete - no more targets found.")
             return
         
@@ -103,6 +113,9 @@ class AutoExploreSystem(System):
         if not auto_explore.has_target():
             # No reachable targets
             auto_explore.deactivate()
+            # Clear automation flag when auto-explore ends
+            if self.game_state:
+                self.game_state.end_automated_action()
             self.message_log.add_warning("No reachable targets found for auto-explore.")
         
         auto_explore.mark_scan_complete(current_turn)
@@ -400,6 +413,9 @@ class AutoExploreSystem(System):
         auto_explore.last_scan_turn = 0  # Force immediate scan
         
         auto_explore.activate()
+        # Set automation flag when auto-explore starts
+        if self.game_state:
+            self.game_state.start_automated_action()
         self.message_log.add_info("Auto-explore started.")
         # Clear pathfinding cache when starting new exploration
         self.pathfinder.clear_cache()
@@ -409,6 +425,9 @@ class AutoExploreSystem(System):
         auto_explore = self.world.get_component(entity_id, AutoExplore)
         if auto_explore and auto_explore.is_active():
             auto_explore.interrupt("Manual interrupt")
+            # Clear automation flag when auto-explore is interrupted
+            if self.game_state:
+                self.game_state.end_automated_action()
             self.message_log.add_warning("Auto-explore interrupted.")
     
     
