@@ -18,6 +18,83 @@ from systems.simple_lighting_system import SimpleLightingSystem
 from systems.render import RenderSystem
 
 
+class PreviewFOVSystem:
+    """Simple FOV system for map preview that makes everything visible (no lighting)."""
+    
+    def __init__(self, world, world_generator, message_log=None):
+        self.world = world
+        self.world_generator = world_generator
+        self.message_log = message_log
+        self.player_fov = set()
+        
+    def update(self, dt: float = 0.0) -> None:
+        """Update FOV - make everything visible in preview mode."""
+        from components.core import Position, Player
+        
+        # Get player position
+        player_entities = self.world.get_entities_with_components(Player, Position)
+        if not player_entities:
+            return
+            
+        player_entity = next(iter(player_entities))
+        player_pos = self.world.get_component(player_entity, Position)
+        if not player_pos:
+            return
+        
+        # In preview mode, make all tiles visible
+        current_level = self.world_generator.get_current_level()
+        if current_level:
+            self.player_fov.clear()
+            for y in range(current_level.height):
+                for x in range(current_level.width):
+                    self.player_fov.add((x, y))
+                    # Mark all tiles as explored
+                    tile = self.world_generator.get_tile_at(x, y)
+                    if tile:
+                        tile.explored = True
+        
+        # Apply visibility to all entities
+        self._apply_entity_visibility()
+    
+    def _apply_entity_visibility(self) -> None:
+        """Make all entities visible in preview mode."""
+        from components.core import Position, Visible
+        
+        entities_with_visibility = self.world.get_entities_with_components(Position, Visible)
+        for entity_id in entities_with_visibility:
+            visible = self.world.get_component(entity_id, Visible)
+            if visible:
+                visible.visible = True
+    
+    def get_render_data(self):
+        """Get render data for the unified tile renderer."""
+        from systems.simple_lighting_system import RenderInfo
+        
+        render_data = {}
+        # In preview mode, all tiles in FOV are lit (no darkness)
+        for x, y in self.player_fov:
+            render_data[(x, y)] = RenderInfo(
+                visible=True,
+                lit=True,  # Everything is lit in preview mode
+                penumbra=False,
+                explored=True
+            )
+        return render_data
+    
+    def is_visible(self, x: int, y: int) -> bool:
+        """Check if a position is visible."""
+        return (x, y) in self.player_fov
+    
+    def get_visible_positions(self):
+        """Get all visible positions."""
+        return self.player_fov.copy()
+    
+    def force_recalculation(self) -> None:
+        """Force recalculation (compatibility method)."""
+        # Clear FOV to force recalculation
+        self.player_fov.clear()
+
+
 class MapPreviewTool:
     """Map preview tool for testing map generation and editing schedule.yaml."""
     
@@ -136,7 +213,12 @@ class MapPreviewTool:
         
         self.render_system.menu_manager.is_menu_active = custom_is_menu_active
         self.input_system = InputSystem(self.world, self.game_state, self.message_log, self.render_system)
-        self.fov_system = SimpleLightingSystem(self.world, self.world_generator, message_log=self.message_log)
+        
+        # Create a simple preview FOV system that makes everything visible (no lighting)
+        self.fov_system = PreviewFOVSystem(self.world, self.world_generator, message_log=self.message_log)
+        
+        # Connect the preview FOV system to the render system
+        self.render_system.set_fov_system(self.fov_system)
         
         # Add systems to world
         self.world.systems.add_system(self.input_system)
@@ -567,9 +649,6 @@ class MapPreviewTool:
         
         # Update the level generator's config seed
         self.world_generator.level_generator.config.seed = new_seed
-        
-        # Update the base generator's config seed
-        self.world_generator.level_generator.base_generator.config.seed = new_seed
         
         # Update the world generator's internal seed
         self.world_generator._seed = new_seed

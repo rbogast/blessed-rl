@@ -78,6 +78,18 @@ class StatusDisplay:
             else:
                 return self.formatter.apply_color("HP: ", "bright_black") + self.formatter.apply_color("--/--", "white")
         elif line_num == 5:
+            # Dark Vision line
+            from components.character import DarkVision
+            dark_vision = self.world.get_component(player_entity, DarkVision)
+            
+            dv_text = self.formatter.apply_color("DV: ", "bright_black")
+            if dark_vision:
+                dv_text += self.formatter.apply_color(str(dark_vision.radius), "white")
+            else:
+                dv_text += self.formatter.apply_color("0", "white")
+            
+            return dv_text
+        elif line_num == 6:
             # Status effects header and display
             from components.effects import StatusEffect
             status_effect = self.world.get_component(player_entity, StatusEffect)
@@ -102,16 +114,16 @@ class StatusDisplay:
                 status_text += self.formatter.apply_color("None", "bright_black")
             
             return status_text
-        elif line_num == 6:
+        elif line_num == 7:
             # Weapon equipment line
             return self._get_equipment_line(player_entity, "weapon", "Weapon")
-        elif line_num == 7:
+        elif line_num == 8:
             # Armor equipment line
             return self._get_equipment_line(player_entity, "armor", "Armor")
-        elif line_num == 8:
+        elif line_num == 9:
             # Ring equipment line (accessory slot)
             return self._get_equipment_line(player_entity, "accessory", "Ring")
-        elif line_num == 9:
+        elif line_num == 10:
             # Ground items display
             return self._get_ground_items_display(player_entity)
         else:

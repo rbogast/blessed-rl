@@ -1,21 +1,21 @@
-# ECS Roguelike
+# Blessed Roguelike
 
-A traditional terminal-based roguelike game built with Python and an Entity Component System (ECS) architecture. Journey eastward through procedurally generated caves, fighting enemies and exploring an infinite horizontal world.
+A traditional terminal-based roguelike dungeon crawler built with Python and an Entity Component System (ECS) architecture. Descend through procedurally generated dungeon levels, fighting enemies and collecting treasure in classic roguelike style.
 
 ## Features
 
 - **Entity Component System Architecture**: Scalable and modular game design
-- **Seamless Horizontal Scrolling**: Travel east through an infinite world
-- **Cellular Automata Map Generation**: Procedurally generated cave systems
-- **Recursive Shadowcasting FOV**: Realistic field of view and exploration
-- **Turn-based Combat**: Classic roguelike combat mechanics with melee and ranged options
-- **Comprehensive Inventory System**: Item collection, management, and equipment
-- **Character Skills**: Progression system with skill development
+- **Multi-Level Dungeon Crawling**: Descend through connected dungeon levels via stairs
+- **Procedural Level Generation**: Each level features unique layouts using cellular automata and maze algorithms
+- **Turn-based Combat**: Classic roguelike combat with melee and ranged weapons
+- **Field of View System**: Realistic line-of-sight and exploration mechanics
+- **Comprehensive Inventory System**: Collect, manage, and equip weapons, armor, and consumables
+- **Character Progression**: Skill development and experience system
 - **Advanced Throwing Mechanics**: Physics-based projectile combat with trajectory visualization
-- **AI Enemies**: Multiple enemy types with different behaviors
-- **Rich Item System**: Weapons, armor, consumables, and throwable items
-- **Interactive Menus**: Dedicated interfaces for inventory, throwing, and item management
-- **Terminal-based UI**: Clean 80x24 terminal interface using blessed
+- **AI Enemies**: Multiple enemy types with different behaviors and stats
+- **Auto-Explore**: Automated exploration with intelligent pathfinding
+- **Save System**: Continue your dungeon delve across sessions
+- **Cross-Platform Terminal UI**: Clean interface using blessed library with automatic character set detection
 
 ## Installation
 
@@ -33,8 +33,6 @@ python3 main.py
 ```
 
 ### Command-Line Options
-
-The game supports several command-line options for customization:
 
 ```bash
 # Run with default settings (auto-detected character set)
@@ -55,33 +53,9 @@ python3 main.py --debug
 
 # List available character sets
 python3 main.py --list-charsets
-
-# Combine options (debug mode with ASCII charset)
-python3 main.py -d -f
 ```
 
-#### Character Sets
-
-The game automatically detects the best character set for your system, but you can override this:
-
-- **unicode**: Full Unicode characters with the best visual quality
-  - Uses: `█▓▒░` for walls, `·` for floor, `♠♣♥♦` for suits
-  - Default on Linux and macOS
-  - May not display correctly on some Windows terminals
-
-- **ascii**: Basic ASCII characters that work everywhere
-  - Uses: `#` for walls, `.` for floor, basic letters/symbols
-  - Guaranteed compatibility with all terminals and systems
-  - Recommended fallback for display issues
-
-- **cp437**: Extended ASCII (Code Page 437)
-  - Uses: `██▓▒░` for walls, `·` for floor, extended symbols
-  - Good compatibility with Windows Command Prompt and PowerShell
-
-**Note for Windows users**: If you see garbled characters like `â-'` or `Â·`, use the `-f` flag to force ASCII mode:
-```bash
-python3 main.py -f
-```
+**Note for Windows users**: If you see garbled characters, use the `-f` flag to force ASCII mode.
 
 ### Controls
 
@@ -92,45 +66,62 @@ python3 main.py -f
   1 2 3
   ```
 - **Space**: Wait/skip turn
-- **I**: Open inventory menu
+- **I**: Toggle inventory display
 - **T**: Open throwing menu
-- **D**: Drop item
-- **U**: Use item
-- **E**: Equip/unequip item
+- **D**: Drop item menu
+- **U**: Use item menu
+- **E**: Equip/unequip item menu
+- **Period (.)**: Use stairs down
+- **Comma (,)**: Use stairs up
+- **Shift+Period (>)**: Travel to stairs down
+- **Shift+Comma (<)**: Travel to stairs up
+- **O**: Auto-explore current level
+- **X**: Examine mode
 - **Q**: Quit game
 
 ### Game Mechanics
 
-- **Objective**: Journey eastward as far as possible
-- **Combat**: Move into enemies to attack them with melee or ranged weapons
-- **Inventory**: Collect, manage, and use items found throughout the world
-- **Skills**: Character progression through skill development
-- **Throwing**: Ranged combat using throwable weapons and items
+- **Objective**: Descend as deep as possible through the dungeon levels
+- **Levels**: Each dungeon level is a single screen (45x23 tiles) with unique layout
+- **Stairs**: Use stairs to move between levels - downward stairs (>) lead deeper, upward stairs (<) lead back up
+- **Combat**: Move into enemies to attack with equipped weapons
+- **Inventory**: Collect and manage items found throughout the dungeon
 - **Equipment**: Equip weapons and armor to improve combat effectiveness
-- **Exploration**: Areas become visible as you explore them
-- **Progress**: Your X position shows how far east you've traveled
-- **Death**: Game ends when you die, showing your final position
+- **Skills**: Character progression through skill development
+- **Auto-Explore**: Press 'O' to automatically explore the current level
+- **Field of View**: Areas become visible as you explore them
+- **Death**: Game ends when you die (permadeath)
 
 ## Architecture
 
 The game uses a clean Entity Component System architecture:
 
-- **Entities**: Game objects (player, enemies, walls)
-- **Components**: Data containers (Position, Health, Renderable, AI)
-- **Systems**: Logic processors (Movement, Combat, Rendering, AI)
+- **Entities**: Game objects (player, enemies, items, stairs)
+- **Components**: Data containers (Position, Health, Renderable, AI, Inventory)
+- **Systems**: Logic processors (Movement, Combat, Rendering, AI, FOV)
 
 ### Key Systems
 
-- **LevelGenerator**: Procedural dungeon level generation
-- **UnifiedFOVLightingSystem**: Unified field of view and lighting system
-- **MovementSystem**: Handles entity movement and collision
+- **LevelManager**: Handles level transitions and stair interactions
+- **DungeonLevel**: Individual level management with entity persistence
+- **WorldGenerator**: Procedural dungeon level generation with multiple algorithms
+- **SimpleLightingSystem**: Field of view and lighting calculations
+- **MovementSystem**: Entity movement and collision detection
 - **CombatSystem**: Turn-based combat resolution
 - **AISystem**: Enemy behavior and pathfinding
 - **RenderSystem**: Terminal-based rendering with blessed
-- **EffectSystem**: Applies effects to entities and tiles
-- **InventorySystem**: Item collection, storage, and management
-- **SkillSystem**: Character progression and skill development
-- **ThrowingSystem**: Ranged combat mechanics and projectile physics
+- **InventorySystem**: Item management and equipment
+- **ThrowingSystem**: Ranged combat mechanics
+- **AutoExploreSystem**: Automated exploration with pathfinding
+
+## Level Generation
+
+Dungeon levels are procedurally generated using various algorithms:
+
+- **Cellular Automata**: Creates organic cave-like structures
+- **Maze Generation**: Generates maze-like corridors and rooms
+- **Template System**: Supports different biome types (caves, mazes, forests, graveyards)
+- **Stair Placement**: Ensures proper connections between levels
 
 ## Development
 
@@ -139,66 +130,24 @@ The codebase is organized into clear modules:
 - `ecs/`: Core ECS framework
 - `components/`: Game component definitions
 - `systems/`: Game system implementations and menu interfaces
-- `game/`: Game-specific logic (world generation, camera, item factory, etc.)
-- `effects/`: Effect definitions and implementations
+- `game/`: Game-specific logic (level management, world generation, etc.)
+- `effects/`: Effect system for temporary modifications
 - `rendering/`: Entity and tile rendering systems
-- `ui/`: User interface components and text formatting
-- `utils/`: Utility functions (line drawing, etc.)
-- `data/`: Game data files (items, enemies, schedules, prefabs)
+- `ui/`: User interface components
+- `utils/`: Utility functions (pathfinding, line drawing, etc.)
+- `data/`: Game data files (items, characters, configuration)
 
 ## Character Types
 
-Each character type (enemies, NPCs) has unique stats, species, disposition, and AI behavior patterns defined in `data/characters.json`.
+Enemy types and NPCs are defined in `data/characters.json` with unique stats, AI behaviors, and special abilities.
 
-## Effects
+## Items & Equipment
 
-Effects are temporary modifications to entities or tiles, managed by the ECS. They can alter stats, apply status conditions, or trigger visual changes.
+The game features a comprehensive item system:
 
-- **Core Effects**: Basic effect definitions and application logic in `effects/core.py`
-- **Physics Effects**: Effects related to movement and spatial interactions in `effects/physics.py`
-- **Status Effects**: Temporary conditions like poison or stun in `effects/status_effects.py`
-- **Tile Effects**: Changes to map tiles, such as creating blood splatters in `effects/tile_effects.py`
-- **Implementations**: Specific effect behaviors in `effects/implementations/`
-
-## Inventory & Items
-
-The game features a comprehensive item system with various types of equipment and consumables:
-
-- **Item Factory**: Procedural item generation and configuration in `game/item_factory.py`
-- **Item Data**: Item definitions and properties stored in `data/items.yaml`
-- **Inventory Management**: Full inventory system with pickup, drop, use, and equip functionality
-- **Equipment System**: Weapons, armor, and accessories that modify character stats
-- **Menu System**: Dedicated menus for inventory, equipment, dropping, and using items
-
-### Item Types
-
-Items are categorized by type and rarity, with various effects and properties:
-- **Weapons**: Melee and ranged weapons with different damage and accuracy stats
+- **Weapons**: Melee and ranged weapons with different damage and accuracy
 - **Armor**: Protective gear that reduces incoming damage
 - **Consumables**: Potions, food, and other single-use items
-- **Throwables**: Items that can be thrown as projectiles for ranged combat
+- **Throwables**: Items that can be thrown as projectiles
 
-## Skills System
-
-Character progression through skill development:
-
-- **Skill Components**: Character skills and progression tracking in `components/skills.py`
-- **Skill System**: Skill advancement and effect application in `systems/skills.py`
-- **Skill-based Combat**: Skills affect combat effectiveness, accuracy, and damage
-
-## Throwing System
-
-Advanced ranged combat mechanics:
-
-- **Throwing Components**: Projectile properties and throwing mechanics in `components/throwing.py`
-- **Throwing System**: Physics-based projectile movement and collision in `systems/throwing.py`
-- **Throwing Menu**: Dedicated interface for selecting and aiming throwable items
-- **Line Drawing**: Trajectory visualization and targeting assistance in `utils/line_drawing.py`
-
-## World Generation
-
-The world is procedurally generated using cellular automata and biome plugins. The `game/worldgen/` module contains the map generator, biome definitions, and scheduler functions.
-
-- **Map Generator**: Generates the cave system using cellular automata in `game/worldgen/core.py`
-- **Biome Plugins**: Define terrain features, enemy spawns, and item placement in `game/worldgen/biomes.py`
-- **Scheduler**: Manages the order of world generation steps in `game/worldgen/scheduler.py`
+Item definitions are stored in `data/items.yaml` with procedural generation support.
